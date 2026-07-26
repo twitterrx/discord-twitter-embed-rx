@@ -51,6 +51,31 @@ describe("TweetProcessor", () => {
       expect(urls).toHaveLength(1);
       expect(urls[0]).toBe(TEST_URLS.NORMAL_TWEET);
     });
+
+    it("記事本体URLを抽出できる", () => {
+      const articleUrl = "https://x.com/i/article/2079240895006904322";
+
+      expect(processor.extractUrls(`記事: ${articleUrl}`)).toEqual([articleUrl]);
+    });
+
+    it("記事本体URLのクエリとフラグメントは抽出結果に含めない", () => {
+      const articleUrl = "https://twitter.com/i/article/2079240895006904322";
+
+      expect(processor.extractUrls(`${articleUrl}?s=20#section`)).toEqual([articleUrl]);
+    });
+  });
+
+  describe("extractArticleId", () => {
+    it.each([
+      ["https://x.com/i/article/2079240895006904322", "2079240895006904322"],
+      ["https://twitter.com/i/article/2079240895006904322?s=20", "2079240895006904322"],
+    ])("記事本体URLから記事IDを抽出できる: %s", (url, expected) => {
+      expect(processor.extractArticleId(url)).toBe(expected);
+    });
+
+    it("ポストURLではundefinedを返す", () => {
+      expect(processor.extractArticleId("https://x.com/user/status/123")).toBeUndefined();
+    });
   });
 
   describe("categorizeBySpoiler", () => {

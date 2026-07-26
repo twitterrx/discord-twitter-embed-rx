@@ -1,5 +1,5 @@
 import { BaseTwitterAdapter, ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
-import { Tweet, TweetMedia } from "@/core/models/Tweet";
+import type { Tweet, TweetArticle, TweetMedia } from "@/core/models/Tweet";
 import { FxTwitterApi } from "@/fxtwitter/api";
 import type { SocialThread, APITwitterStatus } from "@/fxtwitter/generated/model";
 import logger from "@/utils/logger";
@@ -78,6 +78,18 @@ export class FxTwitterAdapter extends BaseTwitterAdapter implements ITwitterAdap
       }
     }
 
+    const poll =
+      fxData.poll && fxData.poll.choices.length > 0
+        ? {
+            options: fxData.poll.choices.map((choice) => ({
+              label: choice.label,
+              votes: choice.count,
+              percentage: choice.percentage,
+            })),
+          }
+        : undefined;
+    const article = this.convertArticle(fxData.article);
+
     const author = fxData.author;
     return {
       url: fxData.url,
@@ -85,8 +97,26 @@ export class FxTwitterAdapter extends BaseTwitterAdapter implements ITwitterAdap
       text: fxData.text,
       metrics: this.createMetrics(fxData.replies, fxData.likes, fxData.reposts),
       media,
+      article,
+      poll,
       quote,
       timestamp: new Date(fxData.created_at),
+    };
+  }
+
+  private convertArticle(data: APITwitterStatus["article"]): TweetArticle | undefined {
+    if (!data) {
+      return undefined;
+    }
+
+    const cover = data.cover_media.media_info;
+    const imageUrl = cover.__typename === "ApiImage" ? cover.original_img_url : cover.media_url_https;
+
+    return {
+      id: data.id,
+      title: data.title,
+      previewText: data.preview_text,
+      imageUrl,
     };
   }
 }

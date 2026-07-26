@@ -52,6 +52,74 @@ describe("DiscordEmbedBuilder", () => {
       expect(embedData.fields?.[2].value).toBe("50");
     });
 
+    it("投票の選択肢を番号、得票数、得票率付きで表示する", () => {
+      const tweet = createMockTweet({
+        poll: {
+          options: [
+            { label: "選択肢A", votes: 3, percentage: 75 },
+            { label: "選択肢B", votes: 1, percentage: 25 },
+          ],
+        },
+      });
+
+      const embedData = builder.build(tweet)[0].toJSON();
+      const pollField = embedData.fields?.[3];
+
+      expect(embedData.fields).toHaveLength(4);
+      expect(pollField).toEqual({
+        inline: false,
+        name: ":bar_chart: poll",
+        value: "1. 選択肢A — 3 votes (75%)\n2. 選択肢B — 1 votes (25%)",
+      });
+    });
+
+    it("同名の投票選択肢を別々の行に表示する", () => {
+      const tweet = createMockTweet({
+        poll: {
+          options: [
+            { label: "千冬ちゃん", votes: 0, percentage: 0 },
+            { label: "千冬ちゃん", votes: 0, percentage: 0 },
+          ],
+        },
+      });
+
+      const pollField = builder.build(tweet)[0].toJSON().fields?.[3];
+
+      expect(pollField?.value).toBe(
+        "1. 千冬ちゃん — 0 votes (0%)\n2. 千冬ちゃん — 0 votes (0%)",
+      );
+    });
+
+    it("複数メディアの場合は先頭Embedだけに投票を表示する", () => {
+      const tweet = createMockTweet({
+        media: [
+          { url: mediaUrl("photo1.jpg"), thumbnailUrl: mediaUrl("photo1.jpg"), type: "photo" },
+          { url: mediaUrl("photo2.jpg"), thumbnailUrl: mediaUrl("photo2.jpg"), type: "photo" },
+        ],
+        poll: {
+          options: [{ label: "選択肢A", votes: 1, percentage: 100 }],
+        },
+      });
+
+      const embeds = builder.build(tweet);
+
+      expect(embeds[0].toJSON().fields?.[3].name).toBe(":bar_chart: poll");
+      expect(embeds[1].toJSON().fields).toBeUndefined();
+    });
+
+    it("投票フィールドを1024文字以内に省略する", () => {
+      const tweet = createMockTweet({
+        poll: {
+          options: [{ label: "長い選択肢".repeat(300), votes: 1, percentage: 100 }],
+        },
+      });
+
+      const pollField = builder.build(tweet)[0].toJSON().fields?.[3];
+
+      expect(pollField?.value).toHaveLength(1024);
+      expect(pollField?.value).toMatch(/\.\.\.$/);
+    });
+
     it("引用ツイートの情報が説明文に含まれる", () => {
       const embeds = builder.build(MOCK_TWEET_WITH_QUOTE);
 
@@ -98,6 +166,72 @@ describe("DiscordEmbedBuilder", () => {
 
       expect(embeds).toHaveLength(1);
       expect(embeds[0].toJSON().description).toBeUndefined();
+    });
+
+    it("記事だけのポストは記事タイトル、プレビュー、カバー画像を表示する", () => {
+      const tweet = createMockTweet({
+        text: "https://x.com/i/article/2079240895006904322",
+        article: {
+          id: "2079240895006904322",
+          title: "記事タイトル",
+          previewText: "記事のプレビュー",
+          imageUrl: mediaUrl("article-cover.jpg"),
+        },
+      });
+
+      const embedData = builder.build(tweet)[0].toJSON();
+
+      expect(embedData.title).toBe("記事タイトル");
+      expect(embedData.description).toBe("記事のプレビュー");
+      expect(embedData.image?.url).toBe(mediaUrl("article-cover.jpg"));
+    });
+
+    it("コメント付き記事ポストはコメントと記事プレビューを表示する", () => {
+      const tweet = createMockTweet({
+        text: "おすすめです https://x.com/i/article/2079240895006904322",
+        article: {
+          title: "記事タイトル",
+          previewText: "記事のプレビュー",
+        },
+      });
+
+      const embedData = builder.build(tweet)[0].toJSON();
+
+      expect(embedData.description).toContain("おすすめです");
+      expect(embedData.description).toContain("記事のプレビュー");
+    });
+
+    it("記事タイトルを256文字以内に省略する", () => {
+      const tweet = createMockTweet({
+        article: {
+          title: "長".repeat(300),
+          previewText: "記事のプレビュー",
+        },
+      });
+
+      const title = builder.build(tweet)[0].toJSON().title;
+
+      expect(title).toHaveLength(256);
+      expect(title).toMatch(/\.\.\.$/);
+    });
+
+    it("通常メディアがある場合は記事カバーより通常メディアを優先する", () => {
+      const tweet = createMockTweet({
+        article: {
+          title: "記事タイトル",
+          previewText: "記事のプレビュー",
+          imageUrl: mediaUrl("article-cover.jpg"),
+        },
+        media: [
+          {
+            url: mediaUrl("photo.jpg"),
+            thumbnailUrl: mediaUrl("photo.jpg"),
+            type: "photo",
+          },
+        ],
+      });
+
+      expect(builder.build(tweet)[0].toJSON().image?.url).toBe(mediaUrl("photo.jpg"));
     });
 
     it("Embedの色が正しく設定される", () => {

@@ -16,6 +16,7 @@ import {
 
 import { ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
 import { Tweet } from "@/core/models/Tweet";
+import { ArticlePostService } from "@/core/services/ArticlePostService";
 import { BanService } from "@/core/services/BanService";
 import { ChannelConfigService } from "@/core/services/ChannelConfigService";
 import { MediaHandler } from "@/core/services/MediaHandler";
@@ -55,7 +56,8 @@ export class MessageHandler {
     private readonly replyLogger: IReplyLogger,
     private readonly tmpDirBase: string,
     private readonly channelConfigService?: ChannelConfigService,
-    private readonly banService?: BanService
+    private readonly banService?: BanService,
+    private readonly articlePostService?: ArticlePostService
   ) {}
 
   /**
@@ -124,10 +126,10 @@ export class MessageHandler {
     });
 
     // 通常URLの処理
-    await this.processUrls(client, message, normal, false);
+    const normalSuccessCount = await this.processUrls(client, message, normal, false);
 
     // スポイラーURLの処理
-    await this.processUrls(client, message, spoiler, true);
+    const spoilerSuccessCount = await this.processUrls(client, message, spoiler, true);
 
     const duration = Date.now() - startTime;
     logger.info("Message processing completed", {
@@ -136,8 +138,10 @@ export class MessageHandler {
       duration: `${duration}ms`,
     });
 
-    // 元メッセージの埋め込みを抑制
-    await message.suppressEmbeds(true);
+    // 1件以上展開できた場合のみ元メッセージの埋め込みを抑制
+    if (normalSuccessCount + spoilerSuccessCount > 0) {
+      await message.suppressEmbeds(true);
+    }
   }
 
   /**
@@ -157,8 +161,8 @@ export class MessageHandler {
    * @param urls URL配列
    * @param isSpoiler スポイラーかどうか
    */
-  private async processUrls(client: Client, message: Message, urls: string[], isSpoiler: boolean): Promise<void> {
-    if (urls.length === 0) return;
+  private async processUrls(client: Client, message: Message, urls: string[], isSpoiler: boolean): Promise<number> {
+    if (urls.length === 0) return 0;
 
     const limit = await this.getUrlLimit(message.guildId);
     const accepted = urls.slice(0, limit);
@@ -175,10 +179,13 @@ export class MessageHandler {
       }
     );
 
+    let successCount = 0;
     for (const url of accepted) {
       try {
         logger.debug("Processing single URL", { url, messageId: message.id, isSpoiler });
-        await this.processSingleUrl(client, message, url, isSpoiler);
+        if (await this.processSingleUrl(client, message, url, isSpoiler)) {
+          successCount++;
+        }
         logger.debug("URL processing completed", { url, messageId: message.id });
       } catch (error) {
         const errorDetails: Record<string, unknown> = {
@@ -205,6 +212,8 @@ export class MessageHandler {
     if (ignoredCount > 0) {
       await this.sendIgnoredNotice(message, ignoredCount, urls.length);
     }
+
+    return successCount;
   }
 
   /**
@@ -245,9 +254,27 @@ export class MessageHandler {
    * @param url ツイートURL
    * @param isSpoiler スポイラーかどうか
    */
-  private async processSingleUrl(client: Client, message: Message, url: string, isSpoiler: boolean): Promise<void> {
+  private async processSingleUrl(client: Client, message: Message, url: string, isSpoiler: boolean): Promise<boolean> {
+    let fetchUrl = url;
+    const articleId = this.processor.extractArticleId(url);
+    if (articleId) {
+      const resolvedUrl = await this.articlePostService?.resolve(articleId);
+      if (!resolvedUrl) {
+        const replyMessage = await message.reply({
+          content: "記事情報を取得できませんでした。記事の共有元ポストURLを送信してください。",
+          allowedMentions: { repliedUser: false },
+        });
+        await this.replyLogger.logReply(message.id, {
+          replyIds: [replyMessage.id],
+          channelId: message.channelId,
+        });
+        return false;
+      }
+      fetchUrl = resolvedUrl;
+    }
+
     // ツイートデータを取得
-    const tweet = await this.twitterAdapter.fetchTweet(url);
+    const tweet = await this.twitterAdapter.fetchTweet(fetchUrl);
 
     if (!tweet) {
       const replyMessage = await message.reply({
@@ -258,7 +285,19 @@ export class MessageHandler {
         replyIds: [replyMessage.id],
         channelId: message.channelId,
       });
-      return;
+      return false;
+    }
+
+    if (tweet.article?.id && this.articlePostService) {
+      try {
+        await this.articlePostService.remember(tweet.article.id, tweet.url);
+      } catch (error) {
+        logger.error("記事の共有元ポストURL記録に失敗しました", {
+          articleId: tweet.article.id,
+          postUrl: tweet.url,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
 
     // Embedを作成
@@ -282,6 +321,8 @@ export class MessageHandler {
         channelId: message.channelId,
       });
     }
+
+    return true;
   }
 
   /**
