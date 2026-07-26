@@ -1,5 +1,6 @@
 import { BaseTwitterAdapter, ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
-import { Tweet, TweetMedia } from "@/core/models/Tweet";
+import type { Tweet, TweetArticle, TweetMedia } from "@/core/models/Tweet";
+import { extractArticleId } from "@/core/services/TweetProcessor";
 import logger from "@/utils/logger";
 import { VxTwitterApi, VxTwitterServerError } from "@/vxtwitter/api";
 import type { VxTwitter } from "@/vxtwitter/vxtwitter";
@@ -85,6 +86,7 @@ export class VxTwitterAdapter extends BaseTwitterAdapter implements ITwitterAdap
       ];
     });
     const poll = pollOptions && pollOptions.length > 0 ? { options: pollOptions } : undefined;
+    const article = this.convertArticle(vxData.article, vxData.text);
 
     return {
       url: vxData.tweetURL,
@@ -97,9 +99,23 @@ export class VxTwitterAdapter extends BaseTwitterAdapter implements ITwitterAdap
       text: vxData.text,
       metrics: this.createMetrics(vxData.replies, vxData.likes, vxData.retweets),
       media,
+      article,
       poll,
       quote,
       timestamp: new Date(vxData.date),
+    };
+  }
+
+  private convertArticle(data: VxTwitter["article"], text: string): TweetArticle | undefined {
+    if (!data?.title || !data.preview_text) {
+      return undefined;
+    }
+
+    return {
+      id: extractArticleId(text),
+      title: data.title,
+      previewText: data.preview_text,
+      imageUrl: data.image ?? undefined,
     };
   }
 }

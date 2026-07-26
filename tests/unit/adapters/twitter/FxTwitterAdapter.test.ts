@@ -2,7 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mediaUrl } from "../../../fixtures/testMediaUrl";
 
 import type { FxTwitterApi } from "@/fxtwitter/api";
-import type { SocialThread, APITwitterStatus, APIUser, APITwitterStatusMedia } from "@/fxtwitter/generated/model";
+import type {
+  SocialThread,
+  APITwitterStatus,
+  APITwitterStatusArticle,
+  APIUser,
+  APITwitterStatusMedia,
+} from "@/fxtwitter/generated/model";
+import { APITwitterStatus as APITwitterStatusSchema } from "@/fxtwitter/generated/model";
 import { FxTwitterAdapter } from "@/adapters/twitter/FxTwitterAdapter";
 
 vi.mock("@/utils/logger", () => ({
@@ -79,6 +86,28 @@ const createFxVideo = (overrides: Partial<NonNullable<APITwitterStatusMedia["vid
 const createFxResponse = (status: TwitterStatus): SocialThread => ({
   code: 200,
   status,
+});
+
+const createFxArticle = (overrides: Partial<APITwitterStatusArticle> = {}): APITwitterStatusArticle => ({
+  created_at: "2024-01-01T00:00:00.000Z",
+  id: "2079240895006904322",
+  title: "記事タイトル",
+  preview_text: "記事のプレビュー",
+  cover_media: {
+    id: "cover-id",
+    media_key: "media-key",
+    media_id: "media-id",
+    media_info: {
+      __typename: "ApiImage",
+      original_img_height: 1080,
+      original_img_width: 1920,
+      original_img_url: mediaUrl("article-cover.jpg"),
+      color_info: { palette: [] },
+    },
+  },
+  content: {},
+  media_entities: [],
+  ...overrides,
 });
 
 // ---------------------------------------------------------------------------
@@ -203,6 +232,63 @@ describe("FxTwitterAdapter", () => {
   });
 
   describe("fetchTweet", () => {
+    it("未知の記事entityMap要素が含まれても記事レスポンスを検証できる", () => {
+      const article = createFxArticle({
+        content: {
+          entityMap: [
+            {
+              key: "2",
+              value: {
+                type: "LINK",
+                mutability: "MUTABLE",
+                data: { url: "https://example.com" },
+              },
+            },
+          ],
+        } as unknown as APITwitterStatusArticle["content"],
+      });
+
+      const status = {
+        ...createFxStatus({
+          article,
+          author: createFxAuthor({
+            description: "",
+            raw_description: { text: "", facets: [] },
+            location: "",
+            url: "https://x.com/test_user",
+            protected: false,
+            followers: 0,
+            following: 0,
+            statuses: 0,
+            media_count: 0,
+            likes: 0,
+            joined: "2024-01-01T00:00:00.000Z",
+            website: null,
+          }),
+        }),
+        quotes: 0,
+        media: { all: [], photos: [], videos: [] },
+        raw_text: {
+          text: "",
+          display_text_range: [0, 0],
+          facets: [],
+        },
+        lang: null,
+        possibly_sensitive: false,
+        replying_to: null,
+        source: null,
+        embed_card: "tweet",
+        provider: "twitter",
+        is_note_tweet: false,
+        community_note: null,
+        reposted_by: null,
+      };
+
+      const result = APITwitterStatusSchema.safeParse(status);
+
+      expect(result.success).toBe(true);
+    });
+
     it("正常なレスポンスからTweetモデルを生成できる", async () => {
       mockApi.getPostInformation.mockResolvedValue(
         createFxResponse(createFxStatus()),
@@ -267,6 +353,52 @@ describe("FxTwitterAdapter", () => {
       const result = await adapter.fetchTweet("https://x.com/user/status/123");
 
       expect(result?.poll).toBeUndefined();
+    });
+
+    it("記事情報をTweetモデルへ変換できる", async () => {
+      mockApi.getPostInformation.mockResolvedValue(
+        createFxResponse(createFxStatus({ article: createFxArticle() })),
+      );
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result?.article).toEqual({
+        id: "2079240895006904322",
+        title: "記事タイトル",
+        previewText: "記事のプレビュー",
+        imageUrl: mediaUrl("article-cover.jpg"),
+      });
+    });
+
+    it("動画カバーの記事情報をTweetモデルへ変換できる", async () => {
+      const videoCover = createFxArticle().cover_media;
+      videoCover.media_info = {
+        __typename: "ApiVideo",
+        type: "video",
+        id: "video-id",
+        id_str: "video-id",
+        ext_alt_text: null,
+        ext_media_color: { palette: [] },
+        media_url: mediaUrl("article-cover.jpg"),
+        media_url_https: mediaUrl("article-cover.jpg"),
+        url: "https://t.co/cover",
+        display_url: "pic.x.com/cover",
+        expanded_url: "https://x.com/cover",
+        original_info: { height: 1080, width: 1920 },
+        sizes: { original: { h: 1080, resize: "fit", w: 1920 } },
+        video_info: {
+          aspect_ratio: [16, 9],
+          duration_millis: 10_000,
+          variants: [],
+        },
+      };
+      mockApi.getPostInformation.mockResolvedValue(
+        createFxResponse(createFxStatus({ article: createFxArticle({ cover_media: videoCover }) })),
+      );
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result?.article?.imageUrl).toBe(mediaUrl("article-cover.jpg"));
     });
 
     it("URL を fxtwitter 形式に変換してリクエストする", async () => {

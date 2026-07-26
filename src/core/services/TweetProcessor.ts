@@ -1,10 +1,12 @@
-import { Tweet } from "@/core/models/Tweet";
+import type { Tweet } from "@/core/models/Tweet";
+
+const ARTICLE_URL_REGEX = /https?:\/\/(?:www\.)?(?:x|twitter)\.com\/i\/article\/([0-9]+)/;
 
 /**
  * ツイート処理に関するビジネスロジックを集約
  */
 export class TweetProcessor {
-  private readonly TWITTER_URL_REGEX = /https:\/\/(x|twitter)\.com\/[A-Za-z_0-9]+\/status\/[0-9]+/g;
+  private readonly TWITTER_URL_REGEX = /https:\/\/(?:x|twitter)\.com\/(?:[A-Za-z_0-9]+\/status|i\/article)\/[0-9]+/g;
 
   /**
    * テキストからツイートURLを抽出する
@@ -17,6 +19,15 @@ export class TweetProcessor {
 
     // 重複を除去
     return [...new Set(matches)];
+  }
+
+  /**
+   * 記事本体URLから記事IDを抽出する
+   * @param url 記事本体URL
+   * @returns 記事ID。記事本体URLでない場合はundefined
+   */
+  extractArticleId(url: string): string | undefined {
+    return extractArticleId(url);
   }
 
   /**
@@ -76,4 +87,13 @@ export class TweetProcessor {
   getVideoUrls(tweet: Tweet): string[] {
     return tweet.media.filter((media) => media.type === "video").map((media) => media.url);
   }
+}
+
+/**
+ * 文字列に含まれる記事本体URLから記事IDを抽出する
+ * @param text 記事URLを含む文字列
+ * @returns 記事ID。記事URLがない場合はundefined
+ */
+export function extractArticleId(text: string): string | undefined {
+  return ARTICLE_URL_REGEX.exec(text)?.[1];
 }
