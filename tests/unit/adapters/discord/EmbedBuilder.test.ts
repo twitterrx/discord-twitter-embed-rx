@@ -168,6 +168,72 @@ describe("DiscordEmbedBuilder", () => {
       expect(embeds[0].toJSON().description).toBeUndefined();
     });
 
+    it("記事だけのポストは記事タイトル、プレビュー、カバー画像を表示する", () => {
+      const tweet = createMockTweet({
+        text: "https://x.com/i/article/2079240895006904322",
+        article: {
+          id: "2079240895006904322",
+          title: "記事タイトル",
+          previewText: "記事のプレビュー",
+          imageUrl: mediaUrl("article-cover.jpg"),
+        },
+      });
+
+      const embedData = builder.build(tweet)[0].toJSON();
+
+      expect(embedData.title).toBe("記事タイトル");
+      expect(embedData.description).toBe("記事のプレビュー");
+      expect(embedData.image?.url).toBe(mediaUrl("article-cover.jpg"));
+    });
+
+    it("コメント付き記事ポストはコメントと記事プレビューを表示する", () => {
+      const tweet = createMockTweet({
+        text: "おすすめです https://x.com/i/article/2079240895006904322",
+        article: {
+          title: "記事タイトル",
+          previewText: "記事のプレビュー",
+        },
+      });
+
+      const embedData = builder.build(tweet)[0].toJSON();
+
+      expect(embedData.description).toContain("おすすめです");
+      expect(embedData.description).toContain("記事のプレビュー");
+    });
+
+    it("記事タイトルを256文字以内に省略する", () => {
+      const tweet = createMockTweet({
+        article: {
+          title: "長".repeat(300),
+          previewText: "記事のプレビュー",
+        },
+      });
+
+      const title = builder.build(tweet)[0].toJSON().title;
+
+      expect(title).toHaveLength(256);
+      expect(title).toMatch(/\.\.\.$/);
+    });
+
+    it("通常メディアがある場合は記事カバーより通常メディアを優先する", () => {
+      const tweet = createMockTweet({
+        article: {
+          title: "記事タイトル",
+          previewText: "記事のプレビュー",
+          imageUrl: mediaUrl("article-cover.jpg"),
+        },
+        media: [
+          {
+            url: mediaUrl("photo.jpg"),
+            thumbnailUrl: mediaUrl("photo.jpg"),
+            type: "photo",
+          },
+        ],
+      });
+
+      expect(builder.build(tweet)[0].toJSON().image?.url).toBe(mediaUrl("photo.jpg"));
+    });
+
     it("Embedの色が正しく設定される", () => {
       const tweet = createMockTweet();
       const embeds = builder.build(tweet);

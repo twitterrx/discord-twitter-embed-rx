@@ -211,6 +211,59 @@ describe("VxTwitterAdapter", () => {
       expect(result?.poll).toBeUndefined();
     });
 
+    it("記事情報と本文中の記事IDをTweetモデルへ変換できる", async () => {
+      const articleImage = mediaUrl("article-cover.jpg");
+      mockApi.getPostInformation.mockResolvedValue(
+        createVxTwitterData({
+          text: "https://x.com/i/article/2079240895006904322",
+          article: {
+            title: "記事タイトル",
+            preview_text: "記事のプレビュー",
+            image: articleImage,
+          },
+        }),
+      );
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result?.article).toEqual({
+        id: "2079240895006904322",
+        title: "記事タイトル",
+        previewText: "記事のプレビュー",
+        imageUrl: articleImage,
+      });
+    });
+
+    it("記事IDを補完できなくても記事プレビューを変換できる", async () => {
+      mockApi.getPostInformation.mockResolvedValue(
+        createVxTwitterData({
+          article: {
+            title: "記事タイトル",
+            preview_text: "記事のプレビュー",
+          },
+        }),
+      );
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result?.article).toEqual({
+        title: "記事タイトル",
+        previewText: "記事のプレビュー",
+      });
+    });
+
+    it("タイトルかプレビューが欠ける記事情報は無視する", async () => {
+      mockApi.getPostInformation.mockResolvedValue(
+        createVxTwitterData({
+          article: { title: "記事タイトル" },
+        }),
+      );
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result?.article).toBeUndefined();
+    });
+
     it("URL を vxtwitter 形式に変換してリクエストする", async () => {
       mockApi.getPostInformation.mockResolvedValue(createVxTwitterData());
 
