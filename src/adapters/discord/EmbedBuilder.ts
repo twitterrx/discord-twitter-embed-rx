@@ -9,8 +9,10 @@ export class DiscordEmbedBuilder {
   private readonly embedColor = 9016025;
   private readonly quotePrefix = "QT: ";
   private readonly br = "\n";
+  private readonly maxTitleLength = 256;
   private readonly maxDescriptionLength = 4096;
   private readonly maxPollFieldLength = 1024;
+  private readonly articleOnlyPattern = /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/i\/article\/[0-9]+(?:[?#]\S*)?$/;
 
   /**
    * ツイートからDiscord Embedを作成
@@ -45,7 +47,7 @@ export class DiscordEmbedBuilder {
         url: tweet.author.url,
         iconURL: tweet.author.iconUrl,
       })
-      .setTitle(tweet.author.name)
+      .setTitle(this.truncateTitle(tweet.article?.title ?? tweet.author.name))
       .setURL(tweet.url)
       .setColor(this.embedColor)
       .addFields(
@@ -55,12 +57,21 @@ export class DiscordEmbedBuilder {
       )
       .setTimestamp(tweet.timestamp);
 
+    if (tweet.article?.imageUrl) {
+      embed.setImage(tweet.article.imageUrl);
+    }
+
     if (tweet.poll && tweet.poll.options.length > 0) {
       embed.addFields(this.createPollField(tweet.poll.options));
     }
 
     // 説明文の作成（引用ツイート情報を含む）
-    let description = this.convertMentionsToLinks(tweet.text);
+    const tweetText = tweet.article && this.articleOnlyPattern.test(tweet.text.trim()) ? "" : tweet.text;
+    let description = this.convertMentionsToLinks(tweetText);
+    if (tweet.article) {
+      description +=
+        (description === "" ? "" : this.br + this.br) + this.convertMentionsToLinks(tweet.article.previewText);
+    }
     if (tweet.quote) {
       const quoteAuthorLink = this.createMentionLink(tweet.quote.author.id);
       const quoteTextWithLinks = this.convertMentionsToLinks(tweet.quote.text);
@@ -74,6 +85,16 @@ export class DiscordEmbedBuilder {
     }
 
     return embed;
+  }
+
+  /**
+   * Embedタイトルを最大長に収める（超過時は末尾を省略）
+   */
+  private truncateTitle(text: string): string {
+    if (text.length <= this.maxTitleLength) {
+      return text;
+    }
+    return text.substring(0, this.maxTitleLength - 3) + "...";
   }
 
   /**

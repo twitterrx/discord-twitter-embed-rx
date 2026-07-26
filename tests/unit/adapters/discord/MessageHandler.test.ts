@@ -9,6 +9,7 @@ import type {
 import { MessageHandler } from "@/adapters/discord/MessageHandler";
 import type { IReplyLogger } from "@/db/replyLogger";
 import type { ChannelConfigService } from "@/core/services/ChannelConfigService";
+import type { ArticlePostService } from "@/core/services/ArticlePostService";
 import type { MediaHandler } from "@/core/services/MediaHandler";
 import type { TweetProcessor } from "@/core/services/TweetProcessor";
 import type { DiscordEmbedBuilder } from "@/adapters/discord/EmbedBuilder";
@@ -49,6 +50,7 @@ describe("MessageHandler", () => {
   let fileManager: IFileManager;
   let videoDownloader: IVideoDownloader;
   let replyLogger: IReplyLogger;
+  let articlePostService: ArticlePostService;
   let handler: MessageHandler;
 
   beforeEach(() => {
@@ -60,6 +62,7 @@ describe("MessageHandler", () => {
         normal: ["https://x.com/user/status/123456789"],
         spoiler: [],
       }),
+      extractArticleId: vi.fn().mockReturnValue(undefined),
     } as unknown as TweetProcessor;
 
     twitterAdapter = {
@@ -94,6 +97,11 @@ describe("MessageHandler", () => {
       deleteReply: vi.fn().mockResolvedValue(undefined),
     };
 
+    articlePostService = {
+      resolve: vi.fn(),
+      remember: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ArticlePostService;
+
     handler = new MessageHandler(
       processor,
       twitterAdapter,
@@ -103,6 +111,9 @@ describe("MessageHandler", () => {
       videoDownloader,
       replyLogger,
       "/tmp",
+      undefined,
+      undefined,
+      articlePostService,
     );
   });
 
@@ -258,6 +269,68 @@ describe("MessageHandler", () => {
       expect(message.reply).toHaveBeenCalledWith(
         expect.objectContaining({ content: "ツイートの取得に失敗しました。" }),
       );
+      expect(message.suppressEmbeds).not.toHaveBeenCalled();
+    });
+
+    it("記事付きポストの取得時に記事IDと共有元ポストURLを保存する", async () => {
+      vi.mocked(twitterAdapter.fetchTweet).mockResolvedValue(
+        createMockTweet({
+          article: {
+            id: "2079240895006904322",
+            title: "記事タイトル",
+            previewText: "記事のプレビュー",
+          },
+        }),
+      );
+      const message = createMockMessage();
+
+      await handler.handleMessage(createMockClient(), message);
+
+      expect(articlePostService.remember).toHaveBeenCalledWith(
+        "2079240895006904322",
+        "https://x.com/test_user/status/123456789",
+      );
+      expect(message.suppressEmbeds).toHaveBeenCalledWith(true);
+    });
+
+    it("保存済みの記事本体URLを共有元ポストURLへ解決して取得する", async () => {
+      const articleUrl = "https://x.com/i/article/2079240895006904322";
+      vi.mocked(processor.extractUrls).mockReturnValue([articleUrl]);
+      vi.mocked(processor.categorizeBySpoiler).mockReturnValue({
+        normal: [articleUrl],
+        spoiler: [],
+      });
+      vi.mocked(processor.extractArticleId).mockReturnValue("2079240895006904322");
+      vi.mocked(articlePostService.resolve).mockResolvedValue("https://x.com/user/status/123");
+      const message = createMockMessage({ content: articleUrl });
+
+      await handler.handleMessage(createMockClient(), message);
+
+      expect(articlePostService.resolve).toHaveBeenCalledWith("2079240895006904322");
+      expect(twitterAdapter.fetchTweet).toHaveBeenCalledWith("https://x.com/user/status/123");
+      expect(message.suppressEmbeds).toHaveBeenCalledWith(true);
+    });
+
+    it("未観測の記事本体URLでは共有元ポストURLを案内して元Embedを抑制しない", async () => {
+      const articleUrl = "https://x.com/i/article/2079240895006904322";
+      vi.mocked(processor.extractUrls).mockReturnValue([articleUrl]);
+      vi.mocked(processor.categorizeBySpoiler).mockReturnValue({
+        normal: [articleUrl],
+        spoiler: [],
+      });
+      vi.mocked(processor.extractArticleId).mockReturnValue("2079240895006904322");
+      vi.mocked(articlePostService.resolve).mockResolvedValue(undefined);
+      const message = createMockMessage({ content: articleUrl });
+
+      await handler.handleMessage(createMockClient(), message);
+
+      expect(twitterAdapter.fetchTweet).not.toHaveBeenCalled();
+      expect(message.reply).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: "記事情報を取得できませんでした。記事の共有元ポストURLを送信してください。",
+        }),
+      );
+      expect(message.suppressEmbeds).not.toHaveBeenCalled();
     });
   });
 });

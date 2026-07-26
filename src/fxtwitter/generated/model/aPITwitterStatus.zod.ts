@@ -463,7 +463,7 @@ export type APITwitterStatusArticleContentEntityMapItem = {
   tweetId: string;
 };
 };
-};
+} | { [key: string]: unknown };
 export type APITwitterStatusArticleContent = {
   blocks?: APITwitterStatusArticleContentBlocksItem[];
   entityMap?: APITwitterStatusArticleContentEntityMapItem[];
@@ -943,7 +943,7 @@ export const APITwitterStatus: zod.ZodType<APITwitterStatus> = zod.object({
   "tweetId": zod.string()
 })
 })
-})])).default(aPITwitterStatusArticleContentEntityMapDefault)
+}),zod.record(zod.string(), zod.unknown())])).default(aPITwitterStatusArticleContentEntityMapDefault)
 }),
   "media_entities": zod.array(zod.object({
   "id": zod.string(),

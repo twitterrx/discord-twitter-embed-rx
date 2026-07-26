@@ -8,10 +8,12 @@ import { DiscordEmbedBuilder } from "@/adapters/discord/EmbedBuilder";
 import { MessageHandler } from "@/adapters/discord/MessageHandler";
 import { OwnerCommandHandler } from "@/adapters/discord/OwnerCommandHandler";
 import { TwitterAdapter } from "@/adapters/twitter/TwitterAdapter";
+import { ArticlePostService } from "@/core/services/ArticlePostService";
 import { BanService } from "@/core/services/BanService";
 import { ChannelConfigService } from "@/core/services/ChannelConfigService";
 import { MediaHandler } from "@/core/services/MediaHandler";
 import { TweetProcessor } from "@/core/services/TweetProcessor";
+import { RedisArticlePostRepository } from "@/infrastructure/db/RedisArticlePostRepository";
 import { RedisBanRepository } from "@/infrastructure/db/RedisBanRepository";
 import { RedisChannelConfigRepository } from "@/infrastructure/db/RedisChannelConfigRepository";
 import { RedisReplyLogger } from "@/infrastructure/db/RedisReplyLogger";
@@ -87,6 +89,7 @@ const httpClient = new HttpClient();
 const fileManager = new FileManager(tmpDir);
 const videoDownloader = new VideoDownloader();
 const replyLogger = new RedisReplyLogger();
+const articlePostRepository = new RedisArticlePostRepository();
 
 // P0: Channel Config Repository & Service
 const channelConfigRepository = new RedisChannelConfigRepository();
@@ -94,6 +97,7 @@ const channelConfigService = new ChannelConfigService(channelConfigRepository);
 
 // Core層
 const tweetProcessor = new TweetProcessor();
+const articlePostService = new ArticlePostService(articlePostRepository);
 const mediaHandler = new MediaHandler(httpClient, config.MEDIA_MAX_FILE_SIZE);
 
 // Adapter層
@@ -113,7 +117,8 @@ const messageHandler = new MessageHandler(
   replyLogger,
   tmpDir,
   channelConfigService,
-  banService
+  banService,
+  articlePostService
 );
 
 // === Create discord bot client ===
