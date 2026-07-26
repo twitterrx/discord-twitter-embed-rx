@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.6.0](https://github.com/rx-twitter/rx-twitter/compare/v2.5.0...v2.6.0) (2026-07-26)
+
+
+### Features
+
+* 投票付きポストのEmbed表示に対応 ([977c4fc](https://github.com/rx-twitter/rx-twitter/commit/977c4fcb1265fa1315527201ba0f93ba839e9d14))
+* 投票付きポストのEmbed表示に対応 ([2a4120a](https://github.com/rx-twitter/rx-twitter/commit/2a4120a9025ce018756d20c0f37f53bdb2e61960))
+* 記事URLのベストエフォート展開に対応 ([a880555](https://github.com/rx-twitter/rx-twitter/commit/a880555eaf36b0d5ee1e7ff50049b5d4ad94de62))
+* 記事URLのベストエフォート展開に対応 ([c269170](https://github.com/rx-twitter/rx-twitter/commit/c26917009c09fbfe133960c77647392b315a6179))
+
 ## [2.5.0](https://github.com/rx-twitter/rx-twitter/compare/v2.4.5...v2.5.0) (2026-07-22)
 
 
