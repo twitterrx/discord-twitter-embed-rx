@@ -4,6 +4,7 @@ export interface Tweet {
   text: string;
   metrics: TweetMetrics;
   media: TweetMedia[];
+  poll?: TweetPoll;
   quote?: Tweet;
   timestamp: Date;
 }
@@ -25,4 +26,14 @@ export interface TweetMedia {
   url: string;
   thumbnailUrl: string;
   type: "photo" | "video";
+}
+
+export interface TweetPoll {
+  options: TweetPollOption[];
+}
+
+export interface TweetPollOption {
+  label: string;
+  votes: number;
+  percentage: number;
 }

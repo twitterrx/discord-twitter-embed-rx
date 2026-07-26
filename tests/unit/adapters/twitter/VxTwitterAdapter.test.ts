@@ -169,6 +169,48 @@ describe("VxTwitterAdapter", () => {
       expect(result?.metrics.retweets).toBe(50);
     });
 
+    it("投票情報を重複と順序を保持してTweetモデルへ変換できる", async () => {
+      const vxData = createVxTwitterData({
+        pollData: {
+          options: [
+            { name: "千冬ちゃん", votes: 2, percent: 50 },
+            { name: "千冬ちゃん", votes: 2, percent: 50 },
+          ],
+        },
+      });
+      mockApi.getPostInformation.mockResolvedValue(vxData);
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result?.poll).toEqual({
+        options: [
+          { label: "千冬ちゃん", votes: 2, percentage: 50 },
+          { label: "千冬ちゃん", votes: 2, percentage: 50 },
+        ],
+      });
+    });
+
+    it("投票情報がない場合 poll は undefined になる", async () => {
+      mockApi.getPostInformation.mockResolvedValue(createVxTwitterData({ pollData: null }));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result?.poll).toBeUndefined();
+    });
+
+    it("有効な選択肢がない場合 poll は undefined になる", async () => {
+      const vxData = createVxTwitterData({
+        pollData: {
+          options: [{ name: "得票情報なし" }, { votes: 1, percent: 100 }],
+        },
+      });
+      mockApi.getPostInformation.mockResolvedValue(vxData);
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result?.poll).toBeUndefined();
+    });
+
     it("URL を vxtwitter 形式に変換してリクエストする", async () => {
       mockApi.getPostInformation.mockResolvedValue(createVxTwitterData());
 
