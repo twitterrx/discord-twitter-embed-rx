@@ -78,6 +78,17 @@ export class FxTwitterAdapter extends BaseTwitterAdapter implements ITwitterAdap
       }
     }
 
+    const poll =
+      fxData.poll && fxData.poll.choices.length > 0
+        ? {
+            options: fxData.poll.choices.map((choice) => ({
+              label: choice.label,
+              votes: choice.count,
+              percentage: choice.percentage,
+            })),
+          }
+        : undefined;
+
     const author = fxData.author;
     return {
       url: fxData.url,
@@ -85,6 +96,7 @@ export class FxTwitterAdapter extends BaseTwitterAdapter implements ITwitterAdap
       text: fxData.text,
       metrics: this.createMetrics(fxData.replies, fxData.likes, fxData.reposts),
       media,
+      poll,
       quote,
       timestamp: new Date(fxData.created_at),
     };

@@ -71,6 +71,21 @@ export class VxTwitterAdapter extends BaseTwitterAdapter implements ITwitterAdap
             }))
           : [];
 
+    const pollOptions = vxData.pollData?.options?.flatMap((option) => {
+      if (option.name === undefined || option.votes === undefined || option.percent === undefined) {
+        return [];
+      }
+
+      return [
+        {
+          label: option.name,
+          votes: option.votes,
+          percentage: option.percent,
+        },
+      ];
+    });
+    const poll = pollOptions && pollOptions.length > 0 ? { options: pollOptions } : undefined;
+
     return {
       url: vxData.tweetURL,
       author: this.createAuthor(
@@ -82,6 +97,7 @@ export class VxTwitterAdapter extends BaseTwitterAdapter implements ITwitterAdap
       text: vxData.text,
       metrics: this.createMetrics(vxData.replies, vxData.likes, vxData.retweets),
       media,
+      poll,
       quote,
       timestamp: new Date(vxData.date),
     };

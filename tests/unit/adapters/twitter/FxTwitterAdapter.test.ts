@@ -221,6 +221,54 @@ describe("FxTwitterAdapter", () => {
       expect(result?.metrics.retweets).toBe(50);
     });
 
+    it("投票情報を順序どおりTweetモデルへ変換できる", async () => {
+      const status = createFxStatus({
+        poll: {
+          choices: [
+            { label: "選択肢A", count: 3, percentage: 75 },
+            { label: "選択肢B", count: 1, percentage: 25 },
+          ],
+          total_votes: 4,
+          ends_at: "2026-07-26T03:42:53Z",
+          time_left_en: "Final results",
+        },
+      });
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(status));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result?.poll).toEqual({
+        options: [
+          { label: "選択肢A", votes: 3, percentage: 75 },
+          { label: "選択肢B", votes: 1, percentage: 25 },
+        ],
+      });
+    });
+
+    it("投票情報がない場合 poll は undefined になる", async () => {
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(createFxStatus({ poll: undefined })));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result?.poll).toBeUndefined();
+    });
+
+    it("選択肢が空の場合 poll は undefined になる", async () => {
+      const status = createFxStatus({
+        poll: {
+          choices: [],
+          total_votes: 0,
+          ends_at: "2026-07-26T03:42:53Z",
+          time_left_en: "Final results",
+        },
+      });
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(status));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result?.poll).toBeUndefined();
+    });
+
     it("URL を fxtwitter 形式に変換してリクエストする", async () => {
       mockApi.getPostInformation.mockResolvedValue(
         createFxResponse(createFxStatus()),
