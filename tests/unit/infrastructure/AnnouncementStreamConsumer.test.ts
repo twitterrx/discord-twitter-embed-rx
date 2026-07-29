@@ -19,7 +19,7 @@ const validAnnouncement: Announcement = {
   id: "ann-1",
   title: "お知らせ",
   body: "本文",
-  createdAt: "2026-07-29T00:00:00.000Z",
+  createdAt: "2026-07-30T00:00:00.000Z",
 };
 
 const entryFields = (announcement: unknown): Record<string, string> => ({
@@ -28,23 +28,30 @@ const entryFields = (announcement: unknown): Record<string, string> => ({
 
 describe("AnnouncementStreamConsumer.processEntry", () => {
   let handler: ReturnType<typeof vi.fn>;
+  let onDeadLetter: ReturnType<typeof vi.fn>;
   let repository: {
-    claimGuild: ReturnType<typeof vi.fn>;
-    releaseGuild: ReturnType<typeof vi.fn>;
+    isDelivered: ReturnType<typeof vi.fn>;
+    markDelivered: ReturnType<typeof vi.fn>;
     incrementAttempts: ReturnType<typeof vi.fn>;
     clearAttempts: ReturnType<typeof vi.fn>;
+    recordDeadLetter: ReturnType<typeof vi.fn>;
   };
   let consumer: AnnouncementStreamConsumer;
 
   beforeEach(() => {
     handler = vi.fn().mockResolvedValue(undefined);
+    onDeadLetter = vi.fn().mockResolvedValue(undefined);
     repository = {
-      claimGuild: vi.fn(),
-      releaseGuild: vi.fn(),
+      isDelivered: vi.fn(),
+      markDelivered: vi.fn(),
       incrementAttempts: vi.fn().mockResolvedValue(1),
       clearAttempts: vi.fn().mockResolvedValue(undefined),
+      recordDeadLetter: vi.fn().mockResolvedValue(undefined),
     };
-    consumer = new AnnouncementStreamConsumer(handler, repository as unknown as IAnnouncementRepository, "test-consumer");
+    consumer = new AnnouncementStreamConsumer(handler, repository as unknown as IAnnouncementRepository, {
+      consumerName: "test-consumer",
+      onDeadLetter,
+    });
   });
 
   it("正常なエントリはハンドラを呼び、成功したら ack を返し試行回数を消去する", async () => {
@@ -64,34 +71,52 @@ describe("AnnouncementStreamConsumer.processEntry", () => {
     expect(repository.clearAttempts).not.toHaveBeenCalled();
   });
 
-  it("announcement フィールドが無いエントリは dead-letter として ack", async () => {
+  it("announcement フィールドが無いエントリは DLQ 保存後に ack", async () => {
     const decision = await consumer.processEntry("1-0", { other: "x" });
 
     expect(handler).not.toHaveBeenCalled();
+    expect(repository.recordDeadLetter).toHaveBeenCalledWith(
+      expect.objectContaining({ streamEntryId: "1-0", reason: expect.stringContaining("missing") })
+    );
+    expect(onDeadLetter).toHaveBeenCalled();
     expect(decision).toBe("ack");
   });
 
-  it("不正な JSON は dead-letter として ack", async () => {
+  it("不正な JSON は DLQ 保存後に ack", async () => {
     const decision = await consumer.processEntry("1-0", { [ANNOUNCEMENT_STREAM_FIELD]: "{ broken" });
 
     expect(handler).not.toHaveBeenCalled();
+    expect(repository.recordDeadLetter).toHaveBeenCalled();
     expect(decision).toBe("ack");
   });
 
-  it("検証に失敗するお知らせは dead-letter として ack", async () => {
-    const decision = await consumer.processEntry("1-0", entryFields({ id: "x", title: "", body: "b", createdAt: "2026-07-29T00:00:00.000Z" }));
+  it("検証に失敗するお知らせは DLQ 保存後に ack", async () => {
+    const decision = await consumer.processEntry(
+      "1-0",
+      entryFields({ id: "x", title: "", body: "b", createdAt: "2026-07-30T00:00:00.000Z" })
+    );
 
     expect(handler).not.toHaveBeenCalled();
+    expect(repository.recordDeadLetter).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: expect.stringContaining("validation") })
+    );
     expect(decision).toBe("ack");
   });
 
-  it("試行回数が上限を超えたら配信せず dead-letter として ack", async () => {
+  it("試行回数が上限を超えたら配信せず DLQ 保存後に ack（お知らせ本体も通知）", async () => {
     repository.incrementAttempts.mockResolvedValue(ANNOUNCEMENT_MAX_DELIVERY_ATTEMPTS + 1);
 
     const decision = await consumer.processEntry("1-0", entryFields(validAnnouncement));
 
     expect(handler).not.toHaveBeenCalled();
-    expect(repository.clearAttempts).toHaveBeenCalledWith("1-0");
+    expect(repository.recordDeadLetter).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: expect.stringContaining("max delivery attempts") })
+    );
+    expect(onDeadLetter).toHaveBeenCalledWith(expect.objectContaining({ announcement: validAnnouncement }));
     expect(decision).toBe("ack");
+  });
+
+  it("getStatus は初期状態で running=false を返す", () => {
+    expect(consumer.getStatus().running).toBe(false);
   });
 });

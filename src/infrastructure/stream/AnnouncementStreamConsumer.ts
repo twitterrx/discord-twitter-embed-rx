@@ -16,36 +16,82 @@ import logger from "@/utils/logger";
 /** お知らせ受信時に呼ばれるハンドラ。throw した場合は再配信対象となる */
 export type AnnouncementHandler = (announcement: Announcement) => Promise<void>;
 
+/** dead-letter 発生時に呼ばれる通知コールバック（オーナー通知など） */
+export type DeadLetterNotifier = (info: DeadLetterInfo) => Promise<void>;
+
+/** dead-letter 情報 */
+export interface DeadLetterInfo {
+  streamEntryId: string;
+  reason: string;
+  payload: string;
+  attempts?: number;
+  announcement?: Announcement;
+}
+
 /** エントリ処理の判定結果 */
 export type EntryDecision = "ack" | "retry";
 
-/** 1回の XREADGROUP でブロックする時間（ミリ秒） */
-const BLOCK_MS = 5000;
+/** コンシューマの稼働状態 */
+export interface ConsumerStatus {
+  running: boolean;
+  connected: boolean;
+}
+
+/** コンシューマのオプション */
+export interface AnnouncementStreamConsumerOptions {
+  /** consumer 名（省略時はランダム） */
+  consumerName?: string;
+  /** 1回の XREADGROUP でブロックする時間（ミリ秒） */
+  blockMs?: number;
+  /** XAUTOCLAIM で再取得する最小アイドル時間（ミリ秒） */
+  reclaimMinIdleMs?: number;
+  /** dead-letter 発生時の通知 */
+  onDeadLetter?: DeadLetterNotifier;
+}
+
 /** 1回に読み取る最大エントリ数 */
 const READ_COUNT = 10;
-/** XAUTOCLAIM で再取得する最小アイドル時間（ミリ秒）。この時間未処理の pending を再配信する */
-const RECLAIM_MIN_IDLE_MS = 60_000;
+const DEFAULT_BLOCK_MS = 5000;
+const DEFAULT_RECLAIM_MIN_IDLE_MS = 60_000;
 
 /**
  * お知らせ配信の Redis Streams コンシューマ
  *
- * consumer group により「永続化・at-least-once・単一消費（複数インスタンスでの重複防止）」を担保する。
+ * consumer group により「永続化・at-least-once・単一消費」を担保する。
  *   - 新規エントリは XREADGROUP(">") で読む
  *   - 失敗/クラッシュで未 ACK の pending は XAUTOCLAIM で再取得し再配信する
  *   - ハンドラ成功で XACK + XDEL、失敗は ACK せず pending に残す
- *   - 不正エントリ・試行上限超過は dead-letter として ACK（無限再試行を防ぐ）
+ *   - 不正エントリ・試行上限超過は DLQ へ保存してから ACK（無限再試行を防ぐ）
+ *
+ * 前提: Bot は単一インスタンスで動作する（ADR 0003）。
  */
 export class AnnouncementStreamConsumer {
   private client: typeof redis | null = null;
   private running = false;
   private readonly consumerName: string;
+  private readonly blockMs: number;
+  private readonly reclaimMinIdleMs: number;
+  private readonly onDeadLetter?: DeadLetterNotifier;
 
   constructor(
     private readonly handler: AnnouncementHandler,
     private readonly repository: IAnnouncementRepository,
-    consumerName?: string
+    options: AnnouncementStreamConsumerOptions = {}
   ) {
-    this.consumerName = consumerName ?? `bot-${randomUUID()}`;
+    this.consumerName = options.consumerName ?? `bot-${randomUUID()}`;
+    this.blockMs = options.blockMs ?? DEFAULT_BLOCK_MS;
+    this.reclaimMinIdleMs = options.reclaimMinIdleMs ?? DEFAULT_RECLAIM_MIN_IDLE_MS;
+    this.onDeadLetter = options.onDeadLetter;
+  }
+
+  /**
+   * 現在の稼働状態を返す（ヘルスチェック用）
+   */
+  getStatus(): ConsumerStatus {
+    return {
+      running: this.running,
+      connected: this.client?.isOpen ?? false,
+    };
   }
 
   /**
@@ -112,7 +158,7 @@ export class AnnouncementStreamConsumer {
       ANNOUNCEMENT_STREAM_KEY,
       ANNOUNCEMENT_CONSUMER_GROUP,
       this.consumerName,
-      RECLAIM_MIN_IDLE_MS,
+      this.reclaimMinIdleMs,
       "0-0",
       { COUNT: READ_COUNT }
     );
@@ -132,7 +178,7 @@ export class AnnouncementStreamConsumer {
       ANNOUNCEMENT_CONSUMER_GROUP,
       this.consumerName,
       [{ key: ANNOUNCEMENT_STREAM_KEY, id: ">" }],
-      { COUNT: READ_COUNT, BLOCK: BLOCK_MS }
+      { COUNT: READ_COUNT, BLOCK: this.blockMs }
     );
 
     if (!response) return;
@@ -158,15 +204,15 @@ export class AnnouncementStreamConsumer {
   /**
    * エントリ内容を検証・配信する。ACK すべきか（"ack"）再試行か（"retry"）を返す。
    *
-   * - 不正な内容（パース不能・検証失敗）: dead-letter として "ack"
-   * - 試行上限超過: dead-letter として "ack"
+   * - 不正な内容（パース不能・検証失敗）: DLQ 保存後に "ack"
+   * - 試行上限超過: DLQ 保存後に "ack"
    * - ハンドラ成功: "ack"
    * - ハンドラ失敗: "retry"
    */
   async processEntry(entryId: string, message: Record<string, string>): Promise<EntryDecision> {
     const raw = message[ANNOUNCEMENT_STREAM_FIELD];
     if (typeof raw !== "string") {
-      logger.warn(`[AnnouncementStream] Entry ${entryId} has no announcement field, dead-lettering`);
+      await this.deadLetter(entryId, "missing announcement field", "");
       return "ack";
     }
 
@@ -174,23 +220,20 @@ export class AnnouncementStreamConsumer {
     try {
       parsed = JSON.parse(raw);
     } catch {
-      logger.warn(`[AnnouncementStream] Entry ${entryId} is not valid JSON, dead-lettering`);
+      await this.deadLetter(entryId, "invalid JSON", raw);
       return "ack";
     }
 
     const validation = validateAnnouncement(parsed);
     if (!validation.ok) {
-      logger.warn(`[AnnouncementStream] Entry ${entryId} failed validation: ${validation.error}, dead-lettering`);
+      await this.deadLetter(entryId, `validation failed: ${validation.error}`, raw);
       return "ack";
     }
 
     const attempts = await this.repository.incrementAttempts(entryId);
     if (attempts > ANNOUNCEMENT_MAX_DELIVERY_ATTEMPTS) {
-      logger.error(
-        `[AnnouncementStream] Entry ${entryId} exceeded max delivery attempts (${ANNOUNCEMENT_MAX_DELIVERY_ATTEMPTS}), dead-lettering`,
-        { announcementId: validation.value.id }
-      );
       await this.repository.clearAttempts(entryId);
+      await this.deadLetter(entryId, "max delivery attempts exceeded", raw, attempts, validation.value);
       return "ack";
     }
 
@@ -201,6 +244,31 @@ export class AnnouncementStreamConsumer {
     } catch (err) {
       logger.error(`[AnnouncementStream] Handler failed for entry ${entryId}, will retry:`, err);
       return "retry";
+    }
+  }
+
+  /**
+   * dead-letter を永続化し、通知コールバックを呼ぶ（いずれの失敗も本処理を止めない）
+   */
+  private async deadLetter(
+    entryId: string,
+    reason: string,
+    payload: string,
+    attempts?: number,
+    announcement?: Announcement
+  ): Promise<void> {
+    logger.warn(`[AnnouncementStream] Dead-lettering entry ${entryId}: ${reason}`);
+    try {
+      await this.repository.recordDeadLetter({ streamEntryId: entryId, reason, payload, attempts });
+    } catch (err) {
+      logger.error(`[AnnouncementStream] Failed to record dead-letter for ${entryId}:`, err);
+    }
+    if (this.onDeadLetter) {
+      try {
+        await this.onDeadLetter({ streamEntryId: entryId, reason, payload, attempts, announcement });
+      } catch (err) {
+        logger.error(`[AnnouncementStream] Dead-letter notifier failed for ${entryId}:`, err);
+      }
     }
   }
 

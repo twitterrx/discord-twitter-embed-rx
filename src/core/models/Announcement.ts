@@ -5,6 +5,10 @@ import type { Announcement, AnnounceTarget } from "@rx-twitter/shared";
  *
  * 配信ロジックが依存する抽象。Core レイヤーに属するため外部依存なし。
  * 送信手段（Discord）や永続化（Redis）は Adapter / Infrastructure 層で実装する。
+ *
+ * 配信保証の前提: Bot は単一インスタンスで動作し、受信プロセスが全ギルドを把握する
+ * （ADR 0003 参照）。重複配信の防止は「配信成功後にのみ delivered を記録し、
+ * 再配信時に delivered 済みギルドをスキップする」冪等性で担保する。
  */
 
 /**
@@ -29,20 +33,20 @@ export interface IAnnouncementSender {
 }
 
 /**
- * 配信済み記録（冪等性・重複配信防止）とストリーム再試行回数の抽象
+ * 配信済み記録（冪等性・重複配信防止）とストリーム再試行回数・dead-letter の抽象
  * Infrastructure 層（Redis）で実装する
  */
 export interface IAnnouncementRepository {
   /**
-   * 指定お知らせの指定ギルドへの配信をアトミックに claim する。
-   * 初めて claim できた場合のみ true を返す（複数インスタンス・再配信での重複を防ぐ）。
+   * 指定お知らせが指定ギルドへ配信済みか判定する。
+   * delivered 記録は配信成功後にのみ書かれるため、true は「確実に配信済み」を意味する。
    */
-  claimGuild(announcementId: string, guildId: string): Promise<boolean>;
+  isDelivered(announcementId: string, guildId: string): Promise<boolean>;
 
   /**
-   * claim を解放する（配信失敗時、再試行で再配信できるようにする）
+   * 指定お知らせを指定ギルドへ配信済みとして記録する（配信成功後にのみ呼ぶ）
    */
-  releaseGuild(announcementId: string, guildId: string): Promise<void>;
+  markDelivered(announcementId: string, guildId: string): Promise<void>;
 
   /**
    * ストリームエントリの配信試行回数をインクリメントし、加算後の値を返す。
@@ -54,6 +58,25 @@ export interface IAnnouncementRepository {
    * ストリームエントリの試行回数記録を消去する（配信完了時）
    */
   clearAttempts(streamEntryId: string): Promise<void>;
+
+  /**
+   * dead-letter を永続化する（調査・再送のため、破棄せず記録に残す）
+   */
+  recordDeadLetter(record: DeadLetterRecord): Promise<void>;
+}
+
+/**
+ * dead-letter レコード
+ */
+export interface DeadLetterRecord {
+  /** 元のストリームエントリID */
+  streamEntryId: string;
+  /** dead-letter となった理由 */
+  reason: string;
+  /** 元のペイロード（生の JSON 文字列など） */
+  payload: string;
+  /** 試行回数（判明している場合） */
+  attempts?: number;
 }
 
 /**
@@ -76,6 +99,6 @@ export interface DeliverySummary {
   delivered: number;
   /** 配信に失敗したギルド数 */
   failed: number;
-  /** 配信済み（claim 済み）のためスキップしたギルド数 */
+  /** 配信済みのためスキップしたギルド数 */
   skipped: number;
 }

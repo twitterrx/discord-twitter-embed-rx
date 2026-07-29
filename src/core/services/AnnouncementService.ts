@@ -14,11 +14,14 @@ import logger from "@/utils/logger";
  * Core レイヤー: 外部依存なし。送信手段・永続化はインターフェース経由で注入する。
  *
  * 配信方針:
- *   - アトミック claim: ギルド単位で claim できた場合のみ配信する（重複配信防止）
+ *   - 冪等性: 配信成功後にのみ delivered を記録し、再配信時に delivered 済みをスキップする
+ *     （記録が「成功後のみ」なので、記録漏れ・障害があっても未配信ギルドは再試行で再配信される）
  *   - ギルド単位のエラー分離: 1ギルドの失敗が他ギルドを止めない
  *   - mode=dm: オーナーへ DM。失敗時、フォールバックチャンネルがあればそちらへ
  *   - mode=channel: 指定チャンネルへ投稿。channelId 未設定なら DM にフォールバック
- *   - 配信失敗時は claim を解放し、上位（ストリーム再試行）で再配信できるようにする
+ *
+ * 前提: Bot は単一インスタンスで動作する（ADR 0003）。複数インスタンス/shard 構成での
+ * 重複防止はスコープ外。
  */
 export class AnnouncementService {
   constructor(
@@ -37,27 +40,27 @@ export class AnnouncementService {
 
     for (const target of targets) {
       try {
-        const claimed = await this.repository.claimGuild(announcement.id, target.guildId);
-        if (!claimed) {
+        // 配信済み（成功記録あり）はスキップ
+        if (await this.repository.isDelivered(announcement.id, target.guildId)) {
           summary.skipped++;
           continue;
         }
 
         const ok = await this.deliverToGuild(announcement, target);
         if (ok) {
+          // 送信成功後にのみ記録する（記録漏れは再試行で再配信され、二重送信より欠落を防ぐ）
+          await this.repository.markDelivered(announcement.id, target.guildId);
           summary.delivered++;
         } else {
-          await this.safeRelease(announcement.id, target.guildId);
           summary.failed++;
         }
       } catch (error) {
-        // ギルド単位のエラー分離（claim 等の予期しない失敗が全体を止めないようにする）
+        // ギルド単位のエラー分離（予期しない失敗が全体を止めないようにする）
         logger.error("[Announcement] Unexpected error while delivering to guild", {
           announcementId: announcement.id,
           guildId: target.guildId,
           error: error instanceof Error ? error.message : String(error),
         });
-        await this.safeRelease(announcement.id, target.guildId);
         summary.failed++;
       }
     }
@@ -117,21 +120,6 @@ export class AnnouncementService {
         error: error instanceof Error ? error.message : String(error),
       });
       return false;
-    }
-  }
-
-  /**
-   * claim の解放。解放自体の失敗はログのみで握る（配信本処理を止めない）。
-   */
-  private async safeRelease(announcementId: string, guildId: string): Promise<void> {
-    try {
-      await this.repository.releaseGuild(announcementId, guildId);
-    } catch (error) {
-      logger.error("[Announcement] Failed to release guild claim", {
-        announcementId,
-        guildId,
-        error: error instanceof Error ? error.message : String(error),
-      });
     }
   }
 }

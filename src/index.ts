@@ -187,7 +187,23 @@ async function handleAnnouncement(announcement: Announcement): Promise<void> {
   }
 }
 
-const announcementConsumer = new AnnouncementStreamConsumer(handleAnnouncement, announcementRepository);
+const announcementConsumer = new AnnouncementStreamConsumer(handleAnnouncement, announcementRepository, {
+  onDeadLetter: async (info) => {
+    // 配信不能・不正なお知らせをオーナーへ通知（通知失敗は本処理に影響させない）
+    try {
+      const owner = await client.users.fetch(resolvedOwnerUserId);
+      const title = info.announcement?.title ? `「${info.announcement.title}」` : `entry ${info.streamEntryId}`;
+      await owner.send(
+        `お知らせ${title}の配信を打ち切りました（dead-letter）。\n理由: ${info.reason}` +
+          (info.attempts ? `\n試行回数: ${info.attempts}` : "")
+      );
+    } catch (err) {
+      logger.warn("[Bot] Failed to notify owner of dead-letter", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  },
+});
 
 // === Event handlers ===
 // On ready
@@ -205,7 +221,12 @@ client.on("clientReady", async () => {
   }
 
   // お知らせ配信の購読開始（ギルドキャッシュが揃う ready 後に開始する）
-  await announcementConsumer.start();
+  // 起動失敗が Bot 全体を落とさないよう保護する（お知らせ機能のみ劣化）
+  try {
+    await announcementConsumer.start();
+  } catch (err) {
+    logger.error("[Bot] Failed to start announcement consumer (announcements disabled):", err);
+  }
 
   // P0: guildCreate - joined フラグとチャンネルキャッシュを設定
   for (const [guildId, guild] of client.guilds.cache) {
@@ -398,6 +419,10 @@ client.on("guildDelete", async (guild) => {
   const healthDeps: HealthCheckDependencies = {
     isRedisReady: () => redis.isReady,
     isDiscordReady: () => client.isReady(),
+    isAnnouncementConsumerHealthy: () => {
+      const status = announcementConsumer.getStatus();
+      return status.running && status.connected;
+    },
   };
   healthServer = new HealthServer(healthDeps, undefined, version);
   await healthServer.start();

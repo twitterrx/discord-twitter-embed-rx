@@ -38,6 +38,9 @@ export const ANNOUNCEMENT_STREAM_KEY = "app:announcement:stream";
 /** consumer group 名: Bot ワーカー群 */
 export const ANNOUNCEMENT_CONSUMER_GROUP = "bot-workers";
 
+/** Redis Streams キー: dead-letter（配信不能・不正エントリの保管先） */
+export const ANNOUNCEMENT_DLQ_STREAM_KEY = "app:announcement:dlq";
+
 /** XADD 時のフィールド名（値は Announcement の JSON 文字列） */
 export const ANNOUNCEMENT_STREAM_FIELD = "announcement";
 

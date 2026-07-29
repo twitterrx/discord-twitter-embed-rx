@@ -17,7 +17,7 @@ const makeAnnouncement = (overrides: Partial<Announcement> = {}): Announcement =
   id: "ann-1",
   title: "メンテナンスのお知らせ",
   body: "本文",
-  createdAt: "2026-07-29T00:00:00.000Z",
+  createdAt: "2026-07-30T00:00:00.000Z",
   ...overrides,
 });
 
@@ -34,10 +34,11 @@ describe("AnnouncementService", () => {
     sendToChannel: ReturnType<typeof vi.fn>;
   };
   let repository: {
-    claimGuild: ReturnType<typeof vi.fn>;
-    releaseGuild: ReturnType<typeof vi.fn>;
+    isDelivered: ReturnType<typeof vi.fn>;
+    markDelivered: ReturnType<typeof vi.fn>;
     incrementAttempts: ReturnType<typeof vi.fn>;
     clearAttempts: ReturnType<typeof vi.fn>;
+    recordDeadLetter: ReturnType<typeof vi.fn>;
   };
   let service: AnnouncementService;
 
@@ -47,10 +48,11 @@ describe("AnnouncementService", () => {
       sendToChannel: vi.fn().mockResolvedValue(undefined),
     };
     repository = {
-      claimGuild: vi.fn().mockResolvedValue(true),
-      releaseGuild: vi.fn().mockResolvedValue(undefined),
+      isDelivered: vi.fn().mockResolvedValue(false),
+      markDelivered: vi.fn().mockResolvedValue(undefined),
       incrementAttempts: vi.fn().mockResolvedValue(1),
       clearAttempts: vi.fn().mockResolvedValue(undefined),
+      recordDeadLetter: vi.fn().mockResolvedValue(undefined),
     };
     service = new AnnouncementService(
       sender as unknown as IAnnouncementSender,
@@ -58,14 +60,12 @@ describe("AnnouncementService", () => {
     );
   });
 
-  it("mode=dm のとき claim してオーナーへ DM を送る", async () => {
+  it("mode=dm のとき DM を送り、成功後にのみ delivered を記録する", async () => {
     const announcement = makeAnnouncement();
     const summary = await service.deliver(announcement, [makeTarget()]);
 
-    expect(repository.claimGuild).toHaveBeenCalledWith("ann-1", "guild-1");
     expect(sender.sendDirectMessage).toHaveBeenCalledWith("owner-1", announcement);
-    expect(sender.sendToChannel).not.toHaveBeenCalled();
-    expect(repository.releaseGuild).not.toHaveBeenCalled();
+    expect(repository.markDelivered).toHaveBeenCalledWith("ann-1", "guild-1");
     expect(summary).toEqual({ delivered: 1, failed: 0, skipped: 0 });
   });
 
@@ -90,13 +90,14 @@ describe("AnnouncementService", () => {
     expect(summary).toEqual({ delivered: 1, failed: 0, skipped: 0 });
   });
 
-  it("claim できなかったギルドはスキップする（冪等性）", async () => {
-    repository.claimGuild.mockResolvedValue(false);
+  it("配信済みギルドはスキップする（冪等性）", async () => {
+    repository.isDelivered.mockResolvedValue(true);
     const announcement = makeAnnouncement();
 
     const summary = await service.deliver(announcement, [makeTarget()]);
 
     expect(sender.sendDirectMessage).not.toHaveBeenCalled();
+    expect(repository.markDelivered).not.toHaveBeenCalled();
     expect(summary).toEqual({ delivered: 0, failed: 0, skipped: 1 });
   });
 
@@ -107,26 +108,25 @@ describe("AnnouncementService", () => {
 
     const summary = await service.deliver(announcement, [target]);
 
-    expect(sender.sendDirectMessage).toHaveBeenCalledWith("owner-1", announcement);
     expect(sender.sendToChannel).toHaveBeenCalledWith("fallback-ch", announcement, "guild-1");
-    expect(repository.releaseGuild).not.toHaveBeenCalled();
+    expect(repository.markDelivered).toHaveBeenCalledWith("ann-1", "guild-1");
     expect(summary).toEqual({ delivered: 1, failed: 0, skipped: 0 });
   });
 
-  it("DM 失敗かつフォールバック先が無い場合は claim を解放して失敗カウント", async () => {
+  it("DM 失敗かつフォールバック先が無い場合は delivered を記録せず失敗カウント", async () => {
     sender.sendDirectMessage.mockRejectedValue(new Error("Cannot send messages to this user"));
     const announcement = makeAnnouncement();
 
     const summary = await service.deliver(announcement, [makeTarget()]);
 
-    expect(repository.releaseGuild).toHaveBeenCalledWith("ann-1", "guild-1");
+    expect(repository.markDelivered).not.toHaveBeenCalled();
     expect(summary).toEqual({ delivered: 0, failed: 1, skipped: 0 });
   });
 
-  it("claim が例外を投げても他ギルドの処理を止めない（エラー分離）", async () => {
-    repository.claimGuild.mockImplementation(async (_id: string, guildId: string) => {
+  it("isDelivered が例外を投げても他ギルドの処理を止めない（エラー分離）", async () => {
+    repository.isDelivered.mockImplementation(async (_id: string, guildId: string) => {
       if (guildId === "guild-throw") throw new Error("redis error");
-      return true;
+      return false;
     });
     const announcement = makeAnnouncement();
 
@@ -140,7 +140,7 @@ describe("AnnouncementService", () => {
   });
 
   it("複数ギルドの結果を集計する", async () => {
-    repository.claimGuild.mockImplementation(async (_id: string, guildId: string) => guildId !== "guild-skip");
+    repository.isDelivered.mockImplementation(async (_id: string, guildId: string) => guildId === "guild-skip");
     sender.sendDirectMessage.mockImplementation(async (userId: string) => {
       if (userId === "owner-fail") throw new Error("blocked");
     });
@@ -155,7 +155,7 @@ describe("AnnouncementService", () => {
     expect(summary).toEqual({ delivered: 1, failed: 1, skipped: 1 });
   });
 
-  it("フォールバックのチャンネル送信も失敗した場合は claim を解放して失敗カウント", async () => {
+  it("フォールバックのチャンネル送信も失敗した場合は delivered を記録せず失敗カウント", async () => {
     sender.sendDirectMessage.mockRejectedValue(new Error("dm blocked"));
     sender.sendToChannel.mockRejectedValue(new Error("channel error"));
     const announcement = makeAnnouncement();
@@ -163,7 +163,7 @@ describe("AnnouncementService", () => {
 
     const summary = await service.deliver(announcement, [target]);
 
-    expect(repository.releaseGuild).toHaveBeenCalledWith("ann-1", "guild-1");
+    expect(repository.markDelivered).not.toHaveBeenCalled();
     expect(summary).toEqual({ delivered: 0, failed: 1, skipped: 0 });
   });
 });

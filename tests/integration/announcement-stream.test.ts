@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import {
+  ANNOUNCEMENT_DLQ_STREAM_KEY,
   ANNOUNCEMENT_STREAM_FIELD,
   ANNOUNCEMENT_STREAM_KEY,
   type Announcement,
@@ -23,11 +24,10 @@ import { AnnouncementStreamConsumer } from "@/infrastructure/stream/Announcement
  */
 const RUN = process.env.RUN_REDIS_INTEGRATION === "1";
 
-/** 非同期条件が満たされるまで待機する */
 const waitForAsync = async (
   cond: () => Promise<boolean>,
   timeoutMs = 8000,
-  intervalMs = 50
+  intervalMs = 30
 ): Promise<void> => {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
@@ -47,6 +47,14 @@ const makeAnnouncement = (overrides: Partial<Announcement> = {}): Announcement =
 
 const streamLen = async (): Promise<number> => redis.xLen(ANNOUNCEMENT_STREAM_KEY);
 
+/** 高速なタイミング設定（テスト用） */
+const fastOptions = (consumerName: string, extra = {}) => ({
+  consumerName,
+  blockMs: 200,
+  reclaimMinIdleMs: 100,
+  ...extra,
+});
+
 describe.skipIf(!RUN)("AnnouncementStreamConsumer (integration, real Redis)", () => {
   beforeAll(async () => {
     if (!redis.isOpen) await redis.connect();
@@ -54,74 +62,96 @@ describe.skipIf(!RUN)("AnnouncementStreamConsumer (integration, real Redis)", ()
 
   afterAll(async () => {
     await redis.del(ANNOUNCEMENT_STREAM_KEY).catch(() => undefined);
+    await redis.del(ANNOUNCEMENT_DLQ_STREAM_KEY).catch(() => undefined);
     if (redis.isOpen) await redis.quit();
   });
 
-  /** ストリーム（および所属する consumer group）を初期化する */
-  const resetStream = async (): Promise<void> => {
+  const resetStreams = async (): Promise<void> => {
     await redis.del(ANNOUNCEMENT_STREAM_KEY).catch(() => undefined);
+    await redis.del(ANNOUNCEMENT_DLQ_STREAM_KEY).catch(() => undefined);
   };
 
   it("XADD したお知らせを consumer が受信し、ACK してストリームから消える", async () => {
-    await resetStream();
+    await resetStreams();
     const received: Announcement[] = [];
     const consumer = new AnnouncementStreamConsumer(
       async (a) => {
         received.push(a);
       },
       new RedisAnnouncementRepository(),
-      "int-consumer-ok"
+      fastOptions("int-ok")
     );
     await consumer.start();
 
     try {
       const ann = makeAnnouncement();
-      await redis.xAdd(ANNOUNCEMENT_STREAM_KEY, "*", {
-        [ANNOUNCEMENT_STREAM_FIELD]: JSON.stringify(ann),
-      });
+      await redis.xAdd(ANNOUNCEMENT_STREAM_KEY, "*", { [ANNOUNCEMENT_STREAM_FIELD]: JSON.stringify(ann) });
 
       await waitForAsync(async () => received.length === 1);
       expect(received[0]).toEqual(ann);
-
-      // ACK + XDEL でストリームが空になる
       await waitForAsync(async () => (await streamLen()) === 0);
     } finally {
       await consumer.shutdown();
     }
   });
 
-  it("不正な JSON エントリはハンドラを呼ばず dead-letter として ACK される", async () => {
-    await resetStream();
+  it("ハンドラが一度失敗しても XAUTOCLAIM で再配信され、最終的に配信される", async () => {
+    await resetStreams();
+    let calls = 0;
+    const consumer = new AnnouncementStreamConsumer(
+      async () => {
+        calls++;
+        if (calls === 1) throw new Error("transient failure");
+      },
+      new RedisAnnouncementRepository(),
+      fastOptions("int-retry")
+    );
+    await consumer.start();
+
+    try {
+      await redis.xAdd(ANNOUNCEMENT_STREAM_KEY, "*", {
+        [ANNOUNCEMENT_STREAM_FIELD]: JSON.stringify(makeAnnouncement({ id: "int-retry-1" })),
+      });
+
+      // 1回目失敗 → pending → reclaim で再配信 → 2回目成功 → ACK でストリームが空になる
+      await waitForAsync(async () => (await streamLen()) === 0);
+      expect(calls).toBeGreaterThanOrEqual(2);
+    } finally {
+      await consumer.shutdown();
+    }
+  });
+
+  it("不正な JSON は DLQ ストリームへ保存され、元ストリームからは消える", async () => {
+    await resetStreams();
     const received: Announcement[] = [];
     const consumer = new AnnouncementStreamConsumer(
       async (a) => {
         received.push(a);
       },
       new RedisAnnouncementRepository(),
-      "int-consumer-poison"
+      fastOptions("int-poison")
     );
     await consumer.start();
 
     try {
-      await redis.xAdd(ANNOUNCEMENT_STREAM_KEY, "*", {
-        [ANNOUNCEMENT_STREAM_FIELD]: "{ broken json",
-      });
+      await redis.xAdd(ANNOUNCEMENT_STREAM_KEY, "*", { [ANNOUNCEMENT_STREAM_FIELD]: "{ broken json" });
 
       await waitForAsync(async () => (await streamLen()) === 0);
       expect(received).toHaveLength(0);
+      // DLQ に1件保存されている
+      expect(await redis.xLen(ANNOUNCEMENT_DLQ_STREAM_KEY)).toBe(1);
     } finally {
       await consumer.shutdown();
     }
   });
 
-  it("claimGuild は同一ギルドで一度だけ true、release 後は再 claim 可能", async () => {
+  it("isDelivered / markDelivered が実 Redis で往復する", async () => {
     const repo = new RedisAnnouncementRepository();
-    const id = `int-claim-${Date.now()}`;
+    const id = `int-deliver-${Date.now()}`;
 
-    expect(await repo.claimGuild(id, "g1")).toBe(true);
-    expect(await repo.claimGuild(id, "g1")).toBe(false);
-    await repo.releaseGuild(id, "g1");
-    expect(await repo.claimGuild(id, "g1")).toBe(true);
+    expect(await repo.isDelivered(id, "g1")).toBe(false);
+    await repo.markDelivered(id, "g1");
+    expect(await repo.isDelivered(id, "g1")).toBe(true);
 
     await redis.del(`app:announcement:${id}:delivered`).catch(() => undefined);
   });
