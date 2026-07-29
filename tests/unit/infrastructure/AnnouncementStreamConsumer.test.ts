@@ -33,6 +33,15 @@ const entryFields = (announcement: unknown): Record<string, string> => ({
   [ANNOUNCEMENT_STREAM_FIELD]: JSON.stringify(announcement),
 });
 
+const waitFor = async (cond: () => boolean, timeoutMs = 2000, intervalMs = 10): Promise<void> => {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (cond()) return;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error("waitFor timed out");
+};
+
 describe("AnnouncementStreamConsumer.processEntry", () => {
   let handler: ReturnType<typeof vi.fn>;
   let onDeadLetter: ReturnType<typeof vi.fn>;
@@ -123,8 +132,28 @@ describe("AnnouncementStreamConsumer.processEntry", () => {
     expect(decision).toBe("ack");
   });
 
-  it("getStatus は初期状態で running=false を返す", () => {
-    expect(consumer.getStatus().running).toBe(false);
+  it("DLQ 保存に失敗した場合は retry を返し、元エントリを消さない", async () => {
+    repository.recordDeadLetter.mockRejectedValue(new Error("redis OOM"));
+
+    const decision = await consumer.processEntry("1-0", { [ANNOUNCEMENT_STREAM_FIELD]: "{ broken" });
+
+    expect(decision).toBe("retry");
+  });
+
+  it("試行上限超過で DLQ 保存に失敗した場合は clearAttempts せず retry", async () => {
+    repository.incrementAttempts.mockResolvedValue(ANNOUNCEMENT_MAX_DELIVERY_ATTEMPTS + 1);
+    repository.recordDeadLetter.mockRejectedValue(new Error("redis OOM"));
+
+    const decision = await consumer.processEntry("1-0", entryFields(validAnnouncement));
+
+    expect(decision).toBe("retry");
+    expect(repository.clearAttempts).not.toHaveBeenCalled();
+  });
+
+  it("getStatus は初期状態で running=false / healthy=false を返す", () => {
+    const status = consumer.getStatus();
+    expect(status.running).toBe(false);
+    expect(status.healthy).toBe(false);
   });
 });
 
@@ -264,11 +293,14 @@ describe("AnnouncementStreamConsumer internals", () => {
     it("start() で group 用意・ループ起動し、shutdown で停止する", async () => {
       const rich = {
         on: vi.fn(),
-        connect: vi.fn().mockResolvedValue(undefined),
         isOpen: false,
+        connect: vi.fn().mockImplementation(async () => {
+          rich.isOpen = true; // 実 node-redis は connect 後に isOpen=true になる
+        }),
         xGroupCreate: vi.fn().mockResolvedValue("OK"),
         xAutoClaim: vi.fn().mockResolvedValue({ messages: [] }),
-        xReadGroup: vi.fn().mockResolvedValue(null),
+        // BLOCK を模擬してループをペースさせる（ビジーループ防止）
+        xReadGroup: vi.fn().mockImplementation(() => new Promise((r) => setTimeout(() => r(null), 20))),
         xAck: vi.fn(),
         xDel: vi.fn(),
         quit: vi.fn().mockResolvedValue(undefined),
@@ -285,10 +317,45 @@ describe("AnnouncementStreamConsumer internals", () => {
       expect(rich.connect).toHaveBeenCalled();
       expect(rich.xGroupCreate).toHaveBeenCalled();
       expect(c.getStatus().running).toBe(true);
+      expect(c.getStatus().healthy).toBe(true);
 
       await c.shutdown();
       expect(c.getStatus().running).toBe(false);
       expect(rich.quit).toHaveBeenCalled();
+    });
+
+    it("ループ内 NOGROUP エラーで consumer group を再作成する", async () => {
+      let autoClaimCalls = 0;
+      const rich = {
+        on: vi.fn(),
+        connect: vi.fn().mockResolvedValue(undefined),
+        isOpen: true,
+        xGroupCreate: vi.fn().mockResolvedValue("OK"),
+        xAutoClaim: vi.fn().mockImplementation(async () => {
+          autoClaimCalls++;
+          if (autoClaimCalls === 1) throw new Error("NOGROUP No such consumer group 'bot-workers'");
+          return { messages: [] };
+        }),
+        // BLOCK を模擬してループをペースさせる（ビジーループ防止）
+        xReadGroup: vi.fn().mockImplementation(() => new Promise((r) => setTimeout(() => r(null), 20))),
+        xAck: vi.fn(),
+        xDel: vi.fn(),
+        quit: vi.fn().mockResolvedValue(undefined),
+      };
+      (redis.duplicate as ReturnType<typeof vi.fn>).mockReturnValue(rich);
+
+      const c = new AnnouncementStreamConsumer(handler, repository as unknown as IAnnouncementRepository, {
+        consumerName: "nogroup",
+        blockMs: 5,
+        reclaimMinIdleMs: 5,
+      });
+
+      await c.start();
+      // start() で 1 回、ループの NOGROUP 回復で 2 回目の作成が呼ばれる
+      await waitFor(() => rich.xGroupCreate.mock.calls.length >= 2);
+      await c.shutdown();
+
+      expect(rich.xGroupCreate.mock.calls.length).toBeGreaterThanOrEqual(2);
     });
   });
 });

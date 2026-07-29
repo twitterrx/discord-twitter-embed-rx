@@ -419,10 +419,7 @@ client.on("guildDelete", async (guild) => {
   const healthDeps: HealthCheckDependencies = {
     isRedisReady: () => redis.isReady,
     isDiscordReady: () => client.isReady(),
-    isAnnouncementConsumerHealthy: () => {
-      const status = announcementConsumer.getStatus();
-      return status.running && status.connected;
-    },
+    isAnnouncementConsumerHealthy: () => announcementConsumer.getStatus().healthy,
   };
   healthServer = new HealthServer(healthDeps, undefined, version);
   await healthServer.start();

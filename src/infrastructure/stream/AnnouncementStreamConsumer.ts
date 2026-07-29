@@ -35,6 +35,8 @@ export type EntryDecision = "ack" | "retry";
 export interface ConsumerStatus {
   running: boolean;
   connected: boolean;
+  /** 稼働中かつ接続済みかつ連続エラーが閾値未満なら true */
+  healthy: boolean;
 }
 
 /** コンシューマのオプション */
@@ -53,6 +55,8 @@ export interface AnnouncementStreamConsumerOptions {
 const READ_COUNT = 10;
 const DEFAULT_BLOCK_MS = 5000;
 const DEFAULT_RECLAIM_MIN_IDLE_MS = 60_000;
+/** 連続エラーがこの回数以上続くと unhealthy とみなす */
+const MAX_CONSECUTIVE_ERRORS = 5;
 
 /**
  * お知らせ配信の Redis Streams コンシューマ
@@ -68,6 +72,7 @@ const DEFAULT_RECLAIM_MIN_IDLE_MS = 60_000;
 export class AnnouncementStreamConsumer {
   private client: typeof redis | null = null;
   private running = false;
+  private consecutiveErrors = 0;
   private readonly consumerName: string;
   private readonly blockMs: number;
   private readonly reclaimMinIdleMs: number;
@@ -88,9 +93,11 @@ export class AnnouncementStreamConsumer {
    * 現在の稼働状態を返す（ヘルスチェック用）
    */
   getStatus(): ConsumerStatus {
+    const connected = this.client?.isOpen ?? false;
     return {
       running: this.running,
-      connected: this.client?.isOpen ?? false,
+      connected,
+      healthy: this.running && connected && this.consecutiveErrors < MAX_CONSECUTIVE_ERRORS,
     };
   }
 
@@ -140,11 +147,26 @@ export class AnnouncementStreamConsumer {
       try {
         await this.reclaimPending();
         await this.readNew();
+        this.consecutiveErrors = 0;
       } catch (err) {
-        if (this.running) {
+        if (!this.running) break; // shutdown 中の read 中断はエラー扱いしない
+
+        this.consecutiveErrors++;
+        const message = err instanceof Error ? err.message : String(err);
+
+        // consumer group が消失した場合は再作成する（Redis データ消失などで発生）
+        if (message.includes("NOGROUP")) {
+          logger.warn("[AnnouncementStream] Consumer group missing, recreating");
+          try {
+            await this.ensureGroup();
+          } catch (recreateErr) {
+            logger.error("[AnnouncementStream] Failed to recreate consumer group:", recreateErr);
+          }
+        } else {
           logger.error("[AnnouncementStream] Loop iteration failed:", err);
-          await this.delay(1000);
         }
+
+        await this.delay(1000);
       }
     }
   }
@@ -212,29 +234,35 @@ export class AnnouncementStreamConsumer {
   async processEntry(entryId: string, message: Record<string, string>): Promise<EntryDecision> {
     const raw = message[ANNOUNCEMENT_STREAM_FIELD];
     if (typeof raw !== "string") {
-      await this.deadLetter(entryId, "missing announcement field", "");
-      return "ack";
+      return this.deadLetter(entryId, "missing announcement field", "");
     }
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
     } catch {
-      await this.deadLetter(entryId, "invalid JSON", raw);
-      return "ack";
+      return this.deadLetter(entryId, "invalid JSON", raw);
     }
 
     const validation = validateAnnouncement(parsed);
     if (!validation.ok) {
-      await this.deadLetter(entryId, `validation failed: ${validation.error}`, raw);
-      return "ack";
+      return this.deadLetter(entryId, `validation failed: ${validation.error}`, raw);
     }
 
     const attempts = await this.repository.incrementAttempts(entryId);
     if (attempts > ANNOUNCEMENT_MAX_DELIVERY_ATTEMPTS) {
-      await this.repository.clearAttempts(entryId);
-      await this.deadLetter(entryId, "max delivery attempts exceeded", raw, attempts, validation.value);
-      return "ack";
+      const decision = await this.deadLetter(
+        entryId,
+        "max delivery attempts exceeded",
+        raw,
+        attempts,
+        validation.value
+      );
+      // DLQ 保存に成功して ack する場合のみ試行回数を消去する
+      if (decision === "ack") {
+        await this.repository.clearAttempts(entryId);
+      }
+      return decision;
     }
 
     try {
@@ -248,7 +276,11 @@ export class AnnouncementStreamConsumer {
   }
 
   /**
-   * dead-letter を永続化し、通知コールバックを呼ぶ（いずれの失敗も本処理を止めない）
+   * dead-letter を永続化し、通知コールバックを呼ぶ。
+   *
+   * DLQ への保存に失敗した場合は "retry" を返し、元エントリを pending に残して
+   * 情報の消失を防ぐ（Redis ACL・OOM 等で DLQ だけ書けない状況に備える）。
+   * 保存成功後の通知失敗のみ best-effort で握り潰す。
    */
   private async deadLetter(
     entryId: string,
@@ -256,13 +288,15 @@ export class AnnouncementStreamConsumer {
     payload: string,
     attempts?: number,
     announcement?: Announcement
-  ): Promise<void> {
+  ): Promise<EntryDecision> {
     logger.warn(`[AnnouncementStream] Dead-lettering entry ${entryId}: ${reason}`);
     try {
       await this.repository.recordDeadLetter({ streamEntryId: entryId, reason, payload, attempts });
     } catch (err) {
-      logger.error(`[AnnouncementStream] Failed to record dead-letter for ${entryId}:`, err);
+      logger.error(`[AnnouncementStream] Failed to record dead-letter for ${entryId}, keeping entry for retry:`, err);
+      return "retry";
     }
+
     if (this.onDeadLetter) {
       try {
         await this.onDeadLetter({ streamEntryId: entryId, reason, payload, attempts, announcement });
@@ -270,6 +304,7 @@ export class AnnouncementStreamConsumer {
         logger.error(`[AnnouncementStream] Dead-letter notifier failed for ${entryId}:`, err);
       }
     }
+    return "ack";
   }
 
   /**
