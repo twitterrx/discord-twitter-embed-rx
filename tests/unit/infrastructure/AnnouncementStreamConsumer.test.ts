@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ANNOUNCEMENT_MAX_DELIVERY_ATTEMPTS, ANNOUNCEMENT_STREAM_FIELD, type Announcement } from "@rx-twitter/shared";
+import {
+  ANNOUNCEMENT_CONSUMER_GROUP,
+  ANNOUNCEMENT_MAX_DELIVERY_ATTEMPTS,
+  ANNOUNCEMENT_STREAM_FIELD,
+  ANNOUNCEMENT_STREAM_KEY,
+  type Announcement,
+} from "@rx-twitter/shared";
 
 vi.mock("@/db/init", () => ({
   redis: {
@@ -12,6 +18,7 @@ vi.mock("@/utils/logger", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
+import { redis } from "@/db/init";
 import type { IAnnouncementRepository } from "@/core/models/Announcement";
 import { AnnouncementStreamConsumer } from "@/infrastructure/stream/AnnouncementStreamConsumer";
 
@@ -118,5 +125,170 @@ describe("AnnouncementStreamConsumer.processEntry", () => {
 
   it("getStatus は初期状態で running=false を返す", () => {
     expect(consumer.getStatus().running).toBe(false);
+  });
+});
+
+/**
+ * consumer group 生成・pending 再取得・新規読み取り・ACK など、
+ * Redis クライアントを介する内部メソッドをモッククライアント注入で検証する。
+ */
+describe("AnnouncementStreamConsumer internals", () => {
+  let handler: ReturnType<typeof vi.fn>;
+  let repository: {
+    isDelivered: ReturnType<typeof vi.fn>;
+    markDelivered: ReturnType<typeof vi.fn>;
+    incrementAttempts: ReturnType<typeof vi.fn>;
+    clearAttempts: ReturnType<typeof vi.fn>;
+    recordDeadLetter: ReturnType<typeof vi.fn>;
+  };
+  let client: {
+    xGroupCreate: ReturnType<typeof vi.fn>;
+    xAutoClaim: ReturnType<typeof vi.fn>;
+    xReadGroup: ReturnType<typeof vi.fn>;
+    xAck: ReturnType<typeof vi.fn>;
+    xDel: ReturnType<typeof vi.fn>;
+    isOpen: boolean;
+  };
+  let consumer: AnnouncementStreamConsumer;
+
+  beforeEach(() => {
+    handler = vi.fn().mockResolvedValue(undefined);
+    repository = {
+      isDelivered: vi.fn(),
+      markDelivered: vi.fn(),
+      incrementAttempts: vi.fn().mockResolvedValue(1),
+      clearAttempts: vi.fn().mockResolvedValue(undefined),
+      recordDeadLetter: vi.fn().mockResolvedValue(undefined),
+    };
+    client = {
+      xGroupCreate: vi.fn().mockResolvedValue("OK"),
+      xAutoClaim: vi.fn().mockResolvedValue({ messages: [] }),
+      xReadGroup: vi.fn().mockResolvedValue(null),
+      xAck: vi.fn().mockResolvedValue(1),
+      xDel: vi.fn().mockResolvedValue(1),
+      isOpen: true,
+    };
+    consumer = new AnnouncementStreamConsumer(handler, repository as unknown as IAnnouncementRepository, {
+      consumerName: "internal-consumer",
+    });
+    // モッククライアントを注入（start() を経由せず内部メソッドを直接検証する）
+    (consumer as unknown as { client: typeof client }).client = client;
+  });
+
+  const call = (method: string, ...args: unknown[]): Promise<unknown> =>
+    (consumer as unknown as Record<string, (...a: unknown[]) => Promise<unknown>>)[method](...args);
+
+  describe("ensureGroup", () => {
+    it("グループを作成する", async () => {
+      await call("ensureGroup");
+      expect(client.xGroupCreate).toHaveBeenCalledWith(ANNOUNCEMENT_STREAM_KEY, ANNOUNCEMENT_CONSUMER_GROUP, "0", {
+        MKSTREAM: true,
+      });
+    });
+
+    it("BUSYGROUP エラーは無視する", async () => {
+      client.xGroupCreate.mockRejectedValue(new Error("BUSYGROUP Consumer Group name already exists"));
+      await expect(call("ensureGroup")).resolves.toBeUndefined();
+    });
+
+    it("その他のエラーは伝播する", async () => {
+      client.xGroupCreate.mockRejectedValue(new Error("boom"));
+      await expect(call("ensureGroup")).rejects.toThrow("boom");
+    });
+  });
+
+  describe("reclaimPending", () => {
+    it("XAUTOCLAIM で取得したエントリを処理し、ACK + XDEL する", async () => {
+      client.xAutoClaim.mockResolvedValue({
+        messages: [{ id: "5-0", message: entryFields(validAnnouncement) }, null],
+      });
+
+      await call("reclaimPending");
+
+      expect(handler).toHaveBeenCalledWith(validAnnouncement);
+      expect(client.xAck).toHaveBeenCalledWith(ANNOUNCEMENT_STREAM_KEY, ANNOUNCEMENT_CONSUMER_GROUP, "5-0");
+      expect(client.xDel).toHaveBeenCalledWith(ANNOUNCEMENT_STREAM_KEY, "5-0");
+    });
+  });
+
+  describe("readNew", () => {
+    it("XREADGROUP のエントリを処理して ACK する", async () => {
+      client.xReadGroup.mockResolvedValue([
+        { name: ANNOUNCEMENT_STREAM_KEY, messages: [{ id: "6-0", message: entryFields(validAnnouncement) }] },
+      ]);
+
+      await call("readNew");
+
+      expect(handler).toHaveBeenCalledWith(validAnnouncement);
+      expect(client.xAck).toHaveBeenCalledWith(ANNOUNCEMENT_STREAM_KEY, ANNOUNCEMENT_CONSUMER_GROUP, "6-0");
+    });
+
+    it("応答が null なら何もしない", async () => {
+      client.xReadGroup.mockResolvedValue(null);
+      await call("readNew");
+      expect(handler).not.toHaveBeenCalled();
+      expect(client.xAck).not.toHaveBeenCalled();
+    });
+
+    it("ハンドラ失敗時は ACK しない（pending に残す）", async () => {
+      handler.mockRejectedValue(new Error("delivery failed"));
+      client.xReadGroup.mockResolvedValue([
+        { name: ANNOUNCEMENT_STREAM_KEY, messages: [{ id: "7-0", message: entryFields(validAnnouncement) }] },
+      ]);
+
+      await call("readNew");
+
+      expect(client.xAck).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getStatus", () => {
+    it("client 接続状態を connected に反映する", () => {
+      expect(consumer.getStatus().connected).toBe(true);
+      client.isOpen = false;
+      expect(consumer.getStatus().connected).toBe(false);
+    });
+  });
+
+  describe("shutdown", () => {
+    it("running を false にする", async () => {
+      const quitClient = { ...client, quit: vi.fn().mockResolvedValue(undefined) };
+      (consumer as unknown as { client: typeof quitClient }).client = quitClient;
+      await consumer.shutdown();
+      expect(consumer.getStatus().running).toBe(false);
+      expect(quitClient.quit).toHaveBeenCalled();
+    });
+  });
+
+  describe("start/shutdown lifecycle", () => {
+    it("start() で group 用意・ループ起動し、shutdown で停止する", async () => {
+      const rich = {
+        on: vi.fn(),
+        connect: vi.fn().mockResolvedValue(undefined),
+        isOpen: false,
+        xGroupCreate: vi.fn().mockResolvedValue("OK"),
+        xAutoClaim: vi.fn().mockResolvedValue({ messages: [] }),
+        xReadGroup: vi.fn().mockResolvedValue(null),
+        xAck: vi.fn(),
+        xDel: vi.fn(),
+        quit: vi.fn().mockResolvedValue(undefined),
+      };
+      (redis.duplicate as ReturnType<typeof vi.fn>).mockReturnValue(rich);
+
+      const c = new AnnouncementStreamConsumer(handler, repository as unknown as IAnnouncementRepository, {
+        consumerName: "lifecycle",
+        blockMs: 5,
+        reclaimMinIdleMs: 5,
+      });
+
+      await c.start();
+      expect(rich.connect).toHaveBeenCalled();
+      expect(rich.xGroupCreate).toHaveBeenCalled();
+      expect(c.getStatus().running).toBe(true);
+
+      await c.shutdown();
+      expect(c.getStatus().running).toBe(false);
+      expect(rich.quit).toHaveBeenCalled();
+    });
   });
 });
