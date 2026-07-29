@@ -1,18 +1,23 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import type { Announcement } from "@rx-twitter/shared";
 import { DASHBOARD_VERSION_FALLBACK, DASHBOARD_VERSION_KEY } from "@rx-twitter/shared";
 import { Client, GatewayIntentBits, Message, Partials, ChannelType } from "discord.js";
 
+import { DiscordAnnouncementSender } from "@/adapters/discord/DiscordAnnouncementSender";
 import { DiscordEmbedBuilder } from "@/adapters/discord/EmbedBuilder";
 import { MessageHandler } from "@/adapters/discord/MessageHandler";
 import { OwnerCommandHandler } from "@/adapters/discord/OwnerCommandHandler";
 import { TwitterAdapter } from "@/adapters/twitter/TwitterAdapter";
+import type { GuildDeliveryTarget } from "@/core/models/Announcement";
+import { AnnouncementService } from "@/core/services/AnnouncementService";
 import { ArticlePostService } from "@/core/services/ArticlePostService";
 import { BanService } from "@/core/services/BanService";
 import { ChannelConfigService } from "@/core/services/ChannelConfigService";
 import { MediaHandler } from "@/core/services/MediaHandler";
 import { TweetProcessor } from "@/core/services/TweetProcessor";
+import { RedisAnnouncementRepository } from "@/infrastructure/db/RedisAnnouncementRepository";
 import { RedisArticlePostRepository } from "@/infrastructure/db/RedisArticlePostRepository";
 import { RedisBanRepository } from "@/infrastructure/db/RedisBanRepository";
 import { RedisChannelConfigRepository } from "@/infrastructure/db/RedisChannelConfigRepository";
@@ -22,6 +27,7 @@ import { HealthServer } from "@/infrastructure/http/HealthServer";
 import type { HealthCheckDependencies } from "@/infrastructure/http/HealthServer";
 import { HttpClient } from "@/infrastructure/http/HttpClient";
 import { VideoDownloader } from "@/infrastructure/http/VideoDownloader";
+import { AnnouncementStreamConsumer } from "@/infrastructure/stream/AnnouncementStreamConsumer";
 import { cleanupOrphanedConfigs } from "@/utils/cleanupOrphanedConfigs";
 import logger from "@/utils/logger";
 
@@ -137,6 +143,52 @@ const client = new Client({
 // Owner Command Handler
 const ownerCommandHandler = new OwnerCommandHandler(ownerUserId, banService, client);
 
+// お知らせ配信（#425 Phase1）
+// ownerUserId は起動時ガードで存在保証済みだが、クロージャ内で型が広がるため const で固定する
+const resolvedOwnerUserId: string = ownerUserId;
+const announcementRepository = new RedisAnnouncementRepository();
+const announcementSender = new DiscordAnnouncementSender(client);
+const announcementService = new AnnouncementService(announcementSender, announcementRepository);
+
+/**
+ * お知らせを全参加サーバーへ配信する（BAN 済みサーバーは除外）
+ */
+async function handleAnnouncement(announcement: Announcement): Promise<void> {
+  const targets: GuildDeliveryTarget[] = [];
+  for (const [guildId, guild] of client.guilds.cache) {
+    if (await banService.isGuildBanned(guildId)) {
+      continue;
+    }
+    const target = await channelConfigService.getAnnounceTarget(guildId);
+    targets.push({ guildId, ownerId: guild.ownerId, target });
+  }
+
+  const summary = await announcementService.deliver(announcement, targets);
+  logger.info("[Bot] Announcement delivery finished", { announcementId: announcement.id, ...summary });
+
+  // 失敗ギルドがある場合は throw し、ストリーム側で再配信させる（未配信ギルドのみ再試行される）
+  if (summary.failed > 0) {
+    throw new Error(
+      `Announcement ${announcement.id} had ${summary.failed} failed deliveries (delivered: ${summary.delivered}, skipped: ${summary.skipped})`
+    );
+  }
+
+  // 全ギルドへ配信完了。オーナーへ結果を通知（通知失敗は本処理に影響させない）
+  try {
+    const owner = await client.users.fetch(resolvedOwnerUserId);
+    await owner.send(
+      `お知らせ「${announcement.title}」を配信しました。\n` +
+        `成功: ${summary.delivered} / スキップ: ${summary.skipped}`
+    );
+  } catch (err) {
+    logger.warn("[Bot] Failed to notify owner of announcement result", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+const announcementConsumer = new AnnouncementStreamConsumer(handleAnnouncement, announcementRepository);
+
 // === Event handlers ===
 // On ready
 client.on("clientReady", async () => {
@@ -151,6 +203,9 @@ client.on("clientReady", async () => {
     logger.error("[Bot] Channel config health check failed!");
     // 劣化モードで続行（完全停止はしない）
   }
+
+  // お知らせ配信の購読開始（ギルドキャッシュが揃う ready 後に開始する）
+  await announcementConsumer.start();
 
   // P0: guildCreate - joined フラグとチャンネルキャッシュを設定
   for (const [guildId, guild] of client.guilds.cache) {
@@ -382,6 +437,9 @@ async function shutdown(): Promise<void> {
     if (healthServer) {
       await healthServer.stop();
     }
+
+    // お知らせ購読のシャットダウン
+    await announcementConsumer.shutdown();
 
     // Channel Config Service のシャットダウン
     await channelConfigService.shutdown();

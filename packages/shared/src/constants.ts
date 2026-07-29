@@ -23,3 +23,29 @@ export const DEFAULT_MAX_URLS_PER_MESSAGE = 3;
 
 /** ダッシュボード設定で指定できる最大値 */
 export const MAX_URLS_PER_MESSAGE_LIMIT = 5;
+
+/**
+ * お知らせ配信用の定数（Bot ↔ Dashboard 共有）
+ *
+ * 配信は Redis Streams を用いる（永続化・at-least-once・単一消費）。
+ * Dashboard(owner) は XADD で ANNOUNCEMENT_STREAM_KEY に投入し、
+ * Bot は consumer group で読み取って配信する。
+ */
+
+/** Redis Streams キー: お知らせ配信ストリーム（Dashboard → Bot） */
+export const ANNOUNCEMENT_STREAM_KEY = "app:announcement:stream";
+
+/** consumer group 名: Bot ワーカー群 */
+export const ANNOUNCEMENT_CONSUMER_GROUP = "bot-workers";
+
+/** XADD 時のフィールド名（値は Announcement の JSON 文字列） */
+export const ANNOUNCEMENT_STREAM_FIELD = "announcement";
+
+/** 1ストリームエントリあたりの最大再配信試行回数（超過で dead-letter） */
+export const ANNOUNCEMENT_MAX_DELIVERY_ATTEMPTS = 5;
+
+/** お知らせタイトルの最大長（Discord Embed のタイトル上限に準拠） */
+export const ANNOUNCEMENT_TITLE_MAX_LENGTH = 256;
+
+/** お知らせ本文の最大長（Discord Embed の説明文上限に準拠） */
+export const ANNOUNCEMENT_BODY_MAX_LENGTH = 4096;

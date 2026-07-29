@@ -2,6 +2,8 @@
  * ギルド設定の型定義（Bot ↔ Dashboard 共有）
  */
 
+import type { AnnounceTarget } from "./announcement.js";
+
 /**
  * Redisに保存されるギルド設定
  */
@@ -20,6 +22,8 @@ export interface GuildConfig {
   updatedBy?: string;
   /** 1メッセージあたりの最大処理URL数（1〜5、未設定時はBot側でデフォルト3を使用） */
   maxUrlsPerMessage?: number;
+  /** お知らせの配信先設定（未設定時はBot側でオーナーへのDMをデフォルトとする） */
+  announceTarget?: AnnounceTarget;
 }
 
 /**
