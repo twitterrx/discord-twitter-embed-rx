@@ -103,7 +103,11 @@ jobs:
 
       - name: Install dependencies (fallback)
         if: steps.restore.outputs.cache-hit != 'true'
-        run: npm ci --prefer-offline && npm run build:shared
+        run: npm ci --prefer-offline
+
+      - name: Build shared package
+        # キャッシュされた dist が shared のソース変更に追従しないため、常に再ビルドする
+        run: npm run build:shared
 
       - name: Run oxlint
         run: npx oxlint src/ tests/
