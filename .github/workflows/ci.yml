@@ -72,6 +72,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: setup
 
+    services:
+      redis:
+        image: redis:8.2.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -95,13 +106,19 @@ jobs:
         run: npm ci --prefer-offline && npm run build:shared
 
       - name: Run oxlint
-        run: npx oxlint src/
+        run: npx oxlint src/ tests/
 
       - name: Run oxfmt (format check)
         run: npx oxfmt --check src/
 
+      - name: Type-check (compile gate)
+        run: npm run compile:test
+
       - name: Run all tests with coverage
         run: npm run test:coverage
+        env:
+          RUN_REDIS_INTEGRATION: "1"
+          REDIS_URL: redis://localhost:6379
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f #v7.0.0
