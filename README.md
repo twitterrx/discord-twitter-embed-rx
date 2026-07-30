@@ -86,8 +86,8 @@ cp .env.example .env
 
 | 変数                        | 説明                                                 | デフォルト |
 | --------------------------- | ---------------------------------------------------- | ---------- |
-| `REDIS_DOWN_FALLBACK`       | Redis 障害時の挙動。`deny`: 全無視 / `allow`: 全許可 | `deny`     |
-| `CONFIG_NOT_FOUND_FALLBACK` | 設定未作成時の挙動                                   | `deny`     |
+| `REDIS_DOWN_FALLBACK`       | Redis 障害時の挙動。`allow`: 全許可 / `deny`: 全無視 | `allow`    |
+| `CONFIG_NOT_FOUND_FALLBACK` | 設定未作成時の挙動                                   | `allow`    |
 | `ENABLE_ORPHAN_CLEANUP`     | 起動時に孤立した設定キーを掃除                       | `false`    |
 
 ## 起動方法
