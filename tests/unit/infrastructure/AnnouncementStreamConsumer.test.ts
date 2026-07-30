@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import {
   ANNOUNCEMENT_CONSUMER_GROUP,
@@ -20,7 +20,11 @@ vi.mock("@/utils/logger", () => ({
 
 import { redis } from "@/db/init";
 import type { IAnnouncementRepository } from "@/core/models/Announcement";
-import { AnnouncementStreamConsumer } from "@/infrastructure/stream/AnnouncementStreamConsumer";
+import {
+  AnnouncementStreamConsumer,
+  type AnnouncementHandler,
+  type DeadLetterNotifier,
+} from "@/infrastructure/stream/AnnouncementStreamConsumer";
 
 const validAnnouncement: Announcement = {
   id: "ann-1",
@@ -43,8 +47,8 @@ const waitFor = async (cond: () => boolean, timeoutMs = 2000, intervalMs = 10): 
 };
 
 describe("AnnouncementStreamConsumer.processEntry", () => {
-  let handler: ReturnType<typeof vi.fn>;
-  let onDeadLetter: ReturnType<typeof vi.fn>;
+  let handler: Mock<AnnouncementHandler>;
+  let onDeadLetter: Mock<DeadLetterNotifier>;
   let repository: {
     isDelivered: ReturnType<typeof vi.fn>;
     markDelivered: ReturnType<typeof vi.fn>;
@@ -55,8 +59,8 @@ describe("AnnouncementStreamConsumer.processEntry", () => {
   let consumer: AnnouncementStreamConsumer;
 
   beforeEach(() => {
-    handler = vi.fn().mockResolvedValue(undefined);
-    onDeadLetter = vi.fn().mockResolvedValue(undefined);
+    handler = vi.fn<AnnouncementHandler>().mockResolvedValue(undefined);
+    onDeadLetter = vi.fn<DeadLetterNotifier>().mockResolvedValue(undefined);
     repository = {
       isDelivered: vi.fn(),
       markDelivered: vi.fn(),
@@ -162,7 +166,7 @@ describe("AnnouncementStreamConsumer.processEntry", () => {
  * Redis クライアントを介する内部メソッドをモッククライアント注入で検証する。
  */
 describe("AnnouncementStreamConsumer internals", () => {
-  let handler: ReturnType<typeof vi.fn>;
+  let handler: Mock<AnnouncementHandler>;
   let repository: {
     isDelivered: ReturnType<typeof vi.fn>;
     markDelivered: ReturnType<typeof vi.fn>;
@@ -181,7 +185,7 @@ describe("AnnouncementStreamConsumer internals", () => {
   let consumer: AnnouncementStreamConsumer;
 
   beforeEach(() => {
-    handler = vi.fn().mockResolvedValue(undefined);
+    handler = vi.fn<AnnouncementHandler>().mockResolvedValue(undefined);
     repository = {
       isDelivered: vi.fn(),
       markDelivered: vi.fn(),

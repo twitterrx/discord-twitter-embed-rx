@@ -297,27 +297,6 @@ export class RedisChannelConfigRepository implements IChannelConfigRepository {
   }
 
   /**
-   * チャンネルが許可されているか判定
-   */
-  async isChannelAllowed(guildId: string, channelId: string): Promise<boolean> {
-    const result = await this.getConfig(guildId);
-
-    if (result.kind !== "found") {
-      // P0: デフォルトは全許可（安全側に倒す）
-      logger.warn(`[ConfigRepo] Config not found for guild ${guildId}, defaulting to ALLOW ALL`);
-      return true;
-    }
-
-    const config = result.data;
-
-    if (config.allowAllChannels) {
-      return true;
-    }
-
-    return config.whitelistedChannelIds.includes(channelId);
-  }
-
-  /**
    * P0: guildDelete で config を削除しない
    * （再参加時の全許可防止）
    */

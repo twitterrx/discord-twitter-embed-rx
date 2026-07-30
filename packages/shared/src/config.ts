@@ -57,14 +57,6 @@ export interface IChannelConfigRepository {
    * @param version 新しいバージョン
    */
   notifyUpdate(guildId: string, version: number): Promise<void>;
-
-  /**
-   * チャンネルが許可されているか判定
-   * @param guildId ギルドID
-   * @param channelId チャンネルID
-   * @returns 許可されている場合 true
-   */
-  isChannelAllowed(guildId: string, channelId: string): Promise<boolean>;
 }
 
 /**

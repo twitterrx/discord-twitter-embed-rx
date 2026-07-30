@@ -107,6 +107,9 @@ jobs:
       - name: Type-check (compile gate)
         run: npm run compile:test
 
+      - name: Type-check tests
+        run: npm run compile:tests
+
       - name: Run all tests with coverage
         run: npm run test:coverage
 

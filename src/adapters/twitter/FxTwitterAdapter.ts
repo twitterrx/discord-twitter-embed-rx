@@ -1,7 +1,7 @@
 import { BaseTwitterAdapter, ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
 import type { Tweet, TweetArticle, TweetMedia } from "@/core/models/Tweet";
 import { FxTwitterApi } from "@/fxtwitter/api";
-import type { SocialThread, APITwitterStatus } from "@/fxtwitter/generated/model";
+import type { SocialThreadOutput, APITwitterStatus } from "@/fxtwitter/generated/model";
 import logger from "@/utils/logger";
 
 /**
@@ -123,6 +123,6 @@ export class FxTwitterAdapter extends BaseTwitterAdapter implements ITwitterAdap
 
 type TwitterStatusData = APITwitterStatus;
 
-function isTwitterStatus(status: SocialThread["status"]): status is TwitterStatusData {
+function isTwitterStatus(status: SocialThreadOutput["status"]): status is TwitterStatusData {
   return !!status && typeof status === "object" && "type" in status && status.type === "status";
 }
