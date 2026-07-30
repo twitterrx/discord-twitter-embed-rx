@@ -1,7 +1,10 @@
-import type { ConfigResult, IChannelConfigRepository } from "@rx-twitter/shared";
+import type { AnnounceTarget, ConfigResult, IChannelConfigRepository } from "@rx-twitter/shared";
 import { DEFAULT_MAX_URLS_PER_MESSAGE, MAX_URLS_PER_MESSAGE_LIMIT } from "@rx-twitter/shared";
 
 import logger from "@/utils/logger";
+
+/** お知らせ配信先のデフォルト（未設定時はオーナーへの DM） */
+const DEFAULT_ANNOUNCE_TARGET: AnnounceTarget = { mode: "dm" };
 
 /**
  * P0対応: フォールバック設定
@@ -112,6 +115,30 @@ export class ChannelConfigService {
     } catch (err) {
       logger.error(`[ChannelConfig] Unexpected error in getMaxUrlsPerMessage for guild ${guildId}:`, err);
       return DEFAULT_MAX_URLS_PER_MESSAGE;
+    }
+  }
+
+  /**
+   * お知らせの配信先設定を取得する
+   * 未設定・不正値・Redis障害時はオーナーへの DM にフォールバックする
+   */
+  async getAnnounceTarget(guildId: string): Promise<AnnounceTarget> {
+    try {
+      const result = await this.repository.getConfig(guildId);
+
+      if (result.kind !== "found") {
+        return DEFAULT_ANNOUNCE_TARGET;
+      }
+
+      const target = result.data.announceTarget;
+      if (!target || (target.mode !== "dm" && target.mode !== "channel")) {
+        return DEFAULT_ANNOUNCE_TARGET;
+      }
+
+      return target;
+    } catch (err) {
+      logger.error(`[ChannelConfig] Unexpected error in getAnnounceTarget for guild ${guildId}:`, err);
+      return DEFAULT_ANNOUNCE_TARGET;
     }
   }
 }

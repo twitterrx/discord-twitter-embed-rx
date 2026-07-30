@@ -10,6 +10,8 @@ import logger from "@/utils/logger";
 export interface HealthCheckDependencies {
   isRedisReady: () => boolean;
   isDiscordReady: () => boolean;
+  /** お知らせ配信コンシューマの稼働状態（未指定時はチェックしない） */
+  isAnnouncementConsumerHealthy?: () => boolean;
 }
 
 export interface HealthCheckResult {
@@ -19,6 +21,7 @@ export interface HealthCheckResult {
   checks: {
     redis: boolean;
     discord: boolean;
+    announcementConsumer?: boolean;
   };
 }
 
@@ -61,22 +64,26 @@ export class HealthServer {
     app.get("/readyz", (c) => {
       const redis = deps.isRedisReady();
       const discord = deps.isDiscordReady();
-      const ready = redis && discord;
+      const consumer = deps.isAnnouncementConsumerHealthy?.();
+      const ready = redis && discord && consumer !== false;
 
-      return c.json({ status: ready ? "ok" : "not ready", checks: { redis, discord } }, ready ? 200 : 503);
+      const checks = consumer === undefined ? { redis, discord } : { redis, discord, announcementConsumer: consumer };
+
+      return c.json({ status: ready ? "ok" : "not ready", checks }, ready ? 200 : 503);
     });
 
     // GET /health — Full Health
     app.get("/health", (c) => {
       const redis = deps.isRedisReady();
       const discord = deps.isDiscordReady();
-      const healthy = redis && discord;
+      const consumer = deps.isAnnouncementConsumerHealthy?.();
+      const healthy = redis && discord && consumer !== false;
 
       const body: HealthCheckResult = {
         status: healthy ? "healthy" : "degraded",
         version,
         uptime: process.uptime(),
-        checks: { redis, discord },
+        checks: consumer === undefined ? { redis, discord } : { redis, discord, announcementConsumer: consumer },
       };
 
       return c.json(body, healthy ? 200 : 503);

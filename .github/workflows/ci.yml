@@ -92,13 +92,20 @@ jobs:
 
       - name: Install dependencies (fallback)
         if: steps.restore.outputs.cache-hit != 'true'
-        run: npm ci --prefer-offline && npm run build:shared
+        run: npm ci --prefer-offline
+
+      - name: Build shared package
+        # キャッシュされた dist が shared のソース変更に追従しないため、常に再ビルドする
+        run: npm run build:shared
 
       - name: Run oxlint
-        run: npx oxlint src/
+        run: npx oxlint src/ tests/
 
       - name: Run oxfmt (format check)
         run: npx oxfmt --check src/
+
+      - name: Type-check (compile gate)
+        run: npm run compile:test
 
       - name: Run all tests with coverage
         run: npm run test:coverage
@@ -108,6 +115,52 @@ jobs:
         with:
           files: ./coverage/coverage-final.json
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  integration-redis:
+    runs-on: ubuntu-latest
+    needs: setup
+
+    services:
+      redis:
+        image: redis:8.2.2-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: 24.x
+          cache: "npm"
+
+      - name: Restore node_modules
+        id: restore
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+            packages/shared/dist
+          key: deps-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies (fallback)
+        if: steps.restore.outputs.cache-hit != 'true'
+        run: npm ci --prefer-offline
+
+      - name: Build shared package
+        run: npm run build:shared
+
+      - name: Run announcement Streams integration tests
+        run: npx vitest run tests/integration/announcement-stream.test.ts
+        env:
+          RUN_REDIS_INTEGRATION: "1"
+          REDIS_URL: redis://localhost:6379
 
   build:
     runs-on: ubuntu-latest
