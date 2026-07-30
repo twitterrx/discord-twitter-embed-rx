@@ -25,6 +25,38 @@ const createMockClient = () =>
     on: vi.fn(),
   }) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+/**
+ * createMessageComponentCollector を備えた返信メッセージのモック。
+ * collect / end のハンドラを控えておき、テストから任意に発火できるようにする。
+ */
+const createMockReplyMessage = () => {
+  const handlers: Record<string, (...args: unknown[]) => unknown> = {};
+  const collector = {
+    on: vi.fn((event: string, fn: (...args: unknown[]) => unknown) => {
+      handlers[event] = fn;
+      return collector;
+    }),
+    stop: vi.fn(),
+  };
+
+  return {
+    id: "reply-msg-id",
+    edit: vi.fn().mockResolvedValue(undefined),
+    createMessageComponentCollector: vi.fn().mockReturnValue(collector),
+    collector,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    emit: (event: string, ...args: unknown[]) => handlers[event]?.(...args) as any,
+    hasHandler: (event: string) => Boolean(handlers[event]),
+  };
+};
+
+const createMockButtonInteraction = () => ({
+  isButton: vi.fn().mockReturnValue(true),
+  customId: "reveal_spoiler_msg-id",
+  deferReply: vi.fn().mockResolvedValue(undefined),
+  editReply: vi.fn().mockResolvedValue(undefined),
+});
+
 const createMockMessage = (overrides: Record<string, unknown> = {}) =>
   ({
     author: { bot: false, id: "user-id" },
@@ -331,6 +363,109 @@ describe("MessageHandler", () => {
         }),
       );
       expect(message.suppressEmbeds).not.toHaveBeenCalled();
+    });
+  });
+  describe("handleMessage - スポイラー投稿のボタン待ち受け", () => {
+    const setupSpoiler = () => {
+      const url = "https://x.com/user/status/123456789";
+      vi.mocked(processor.extractUrls).mockReturnValue([url]);
+      vi.mocked(processor.categorizeBySpoiler).mockReturnValue({
+        normal: [],
+        spoiler: [url],
+      });
+
+      const replyMessage = createMockReplyMessage();
+      const message = createMockMessage({
+        reply: vi.fn().mockResolvedValue(replyMessage),
+      });
+
+      return { message, replyMessage };
+    };
+
+    it("グローバルな interactionCreate リスナーを登録しない", async () => {
+      const { message } = setupSpoiler();
+      const client = createMockClient();
+
+      await handler.handleMessage(client, message);
+
+      expect(client.on).not.toHaveBeenCalled();
+    });
+
+    it("返信メッセージ単位の collector で待ち受ける", async () => {
+      const { message, replyMessage } = setupSpoiler();
+
+      await handler.handleMessage(createMockClient(), message);
+
+      expect(replyMessage.createMessageComponentCollector).toHaveBeenCalledTimes(1);
+      expect(replyMessage.createMessageComponentCollector).toHaveBeenCalledWith(
+        expect.objectContaining({ time: 24 * 60 * 60 * 1000 }),
+      );
+    });
+
+    it("spoiler を複数投稿しても collector はメッセージごとに閉じる", async () => {
+      const { message: first } = setupSpoiler();
+      const { message: second } = setupSpoiler();
+      const client = createMockClient();
+
+      await handler.handleMessage(client, first);
+      await handler.handleMessage(client, second);
+
+      // リスナーが client へ積まれていないこと（リークしないこと）
+      expect(client.on).not.toHaveBeenCalled();
+    });
+
+    it("ボタン押下でエフェメラル応答を返す", async () => {
+      const { message, replyMessage } = setupSpoiler();
+      await handler.handleMessage(createMockClient(), message);
+
+      const interaction = createMockButtonInteraction();
+      await replyMessage.emit("collect", interaction);
+
+      expect(interaction.deferReply).toHaveBeenCalledWith(
+        expect.objectContaining({ ephemeral: true }),
+      );
+      expect(interaction.editReply).toHaveBeenCalled();
+    });
+
+    it("メディア取得に失敗した場合はエラーメッセージを返す", async () => {
+      const { message, replyMessage } = setupSpoiler();
+      vi.mocked(fileManager.createTempDirectory).mockRejectedValue(
+        new Error("disk full"),
+      );
+      await handler.handleMessage(createMockClient(), message);
+
+      const interaction = createMockButtonInteraction();
+      await replyMessage.emit("collect", interaction);
+
+      expect(interaction.editReply).toHaveBeenCalledWith(
+        expect.objectContaining({ content: "コンテンツの取得に失敗しました。" }),
+      );
+    });
+
+    it("期限切れでボタンを無効化する", async () => {
+      const { message, replyMessage } = setupSpoiler();
+      await handler.handleMessage(createMockClient(), message);
+
+      expect(replyMessage.hasHandler("end")).toBe(true);
+      await replyMessage.emit("end");
+
+      expect(replyMessage.edit).toHaveBeenCalledTimes(1);
+      const editArg = vi.mocked(replyMessage.edit).mock.calls[0][0] as {
+        components: { components: { data: { disabled?: boolean; label?: string } }[] }[];
+      };
+      const expiredButton = editArg.components[0].components[0].data;
+      expect(expiredButton.disabled).toBe(true);
+      // 押せないボタンになるため、ラベル自体で期限切れと分かるようにする
+      expect(expiredButton.label).toBe("表示期限が切れました");
+    });
+
+    it("期限切れ時にメッセージが削除済みでも例外を投げない", async () => {
+      const { message, replyMessage } = setupSpoiler();
+      await handler.handleMessage(createMockClient(), message);
+
+      vi.mocked(replyMessage.edit).mockRejectedValue(new Error("Unknown Message"));
+
+      await expect(replyMessage.emit("end")).resolves.not.toThrow();
     });
   });
 });

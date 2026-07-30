@@ -9,6 +9,7 @@ import {
   ButtonStyle,
   ChannelType,
   Client,
+  ComponentType,
   DiscordAPIError,
   Message,
   EmbedBuilder,
@@ -25,6 +26,18 @@ import { IReplyLogger } from "@/db/replyLogger";
 import logger from "@/utils/logger";
 
 import { DiscordEmbedBuilder } from "./EmbedBuilder";
+
+/**
+ * スポイラー展開ボタンの待ち受け時間
+ * RedisReplyLogger の既定 TTL（24時間）と尺度を揃える
+ */
+const SPOILER_BUTTON_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** スポイラー展開ボタンのラベル */
+const SPOILER_BUTTON_LABEL = "ネタバレを見る";
+
+/** 待ち受け終了後に表示するラベル */
+const SPOILER_BUTTON_EXPIRED_LABEL = "表示期限が切れました";
 
 export interface IFileManager {
   createTempDirectory(): Promise<string>;
@@ -183,7 +196,7 @@ export class MessageHandler {
     for (const url of accepted) {
       try {
         logger.debug("Processing single URL", { url, messageId: message.id, isSpoiler });
-        if (await this.processSingleUrl(client, message, url, isSpoiler)) {
+        if (await this.processSingleUrl(message, url, isSpoiler)) {
           successCount++;
         }
         logger.debug("URL processing completed", { url, messageId: message.id });
@@ -254,7 +267,7 @@ export class MessageHandler {
    * @param url ツイートURL
    * @param isSpoiler スポイラーかどうか
    */
-  private async processSingleUrl(client: Client, message: Message, url: string, isSpoiler: boolean): Promise<boolean> {
+  private async processSingleUrl(message: Message, url: string, isSpoiler: boolean): Promise<boolean> {
     let fetchUrl = url;
     const articleId = this.processor.extractArticleId(url);
     if (articleId) {
@@ -305,7 +318,7 @@ export class MessageHandler {
 
     // スポイラーの場合はボタン付きで送信（メディアは直接投稿しない）
     if (isSpoiler) {
-      await this.sendSpoilerMessage(client, message, embeds, tweet);
+      await this.sendSpoilerMessage(message, embeds, tweet);
     } else {
       // 通常の場合のみメディアを処理
       let mediaMessageIds: string[] = [];
@@ -332,15 +345,10 @@ export class MessageHandler {
    * @param embeds Embed配列
    * @param tweet ツイートデータ
    */
-  private async sendSpoilerMessage(
-    client: Client,
-    message: Message,
-    embeds: EmbedBuilder[],
-    tweet: Tweet
-  ): Promise<void> {
+  private async sendSpoilerMessage(message: Message, embeds: EmbedBuilder[], tweet: Tweet): Promise<void> {
     const button = new ButtonBuilder()
       .setCustomId(`reveal_spoiler_${message.id}`)
-      .setLabel("ネタバレを見る")
+      .setLabel(SPOILER_BUTTON_LABEL)
       .setStyle(ButtonStyle.Primary);
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
@@ -356,11 +364,15 @@ export class MessageHandler {
       channelId: message.channelId,
     });
 
-    // ボタンクリックイベントを登録
-    client.on("interactionCreate", async (interaction) => {
-      if (!interaction.isButton()) return;
-      if (interaction.customId !== `reveal_spoiler_${message.id}`) return;
+    // ボタンの待ち受けは返信メッセージ単位の collector で行う。
+    // グローバルな interactionCreate リスナーは解除経路がなく、
+    // spoiler 投稿のたびに積み上がるため使わない（#550）。
+    const collector = replyMessage.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      time: SPOILER_BUTTON_TTL_MS,
+    });
 
+    collector.on("collect", async (interaction) => {
       // エフェメラルで応答を遅延（動画ダウンロード中の待機用）
       await interaction.deferReply({ ephemeral: true });
 
@@ -384,6 +396,27 @@ export class MessageHandler {
           content: "コンテンツの取得に失敗しました。",
           embeds,
           allowedMentions: { repliedUser: false },
+        });
+      }
+    });
+
+    // 待ち受け終了後はボタンを押せないため、期限切れと分かる表示に置き換える
+    collector.on("end", async () => {
+      const expiredButton = new ButtonBuilder()
+        .setCustomId(`reveal_spoiler_${message.id}`)
+        .setLabel(SPOILER_BUTTON_EXPIRED_LABEL)
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(true);
+
+      try {
+        await replyMessage.edit({
+          components: [new ActionRowBuilder<ButtonBuilder>().addComponents(expiredButton)],
+        });
+      } catch (error) {
+        // メッセージが既に削除されている場合など。表示の後始末なので握りつぶす
+        logger.debug("Failed to disable expired spoiler button", {
+          messageId: message.id,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     });
