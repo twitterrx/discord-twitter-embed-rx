@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.7.0](https://github.com/rx-twitter/rx-twitter/compare/v2.6.0...v2.7.0) (2026-07-30)
+
+
+### Features
+
+* **announcement:** お知らせDM機能 Phase1（Redis Streams 配信） ([865f0da](https://github.com/rx-twitter/rx-twitter/commit/865f0da8eae5bae0e133325e3a96f236308b20f0))
+* **announcement:** お知らせDM機能 Phase1（Redis Streams 配信） ([03a9084](https://github.com/rx-twitter/rx-twitter/commit/03a9084933aeef74d9078cd05590cd9abc07eb74)), closes [#425](https://github.com/rx-twitter/rx-twitter/issues/425)
+
+
+### Bug Fixes
+
+* **announcement:** DLQ保存失敗の握り潰しとNOGROUP未回復を修正 ([4a11134](https://github.com/rx-twitter/rx-twitter/commit/4a11134791dc7e475b1e2e2e849c3018524f1593)), closes [#425](https://github.com/rx-twitter/rx-twitter/issues/425)
+* **announcement:** PR [#552](https://github.com/rx-twitter/rx-twitter/issues/552) レビュー対応（配信保証・DLQ・health） ([262ab64](https://github.com/rx-twitter/rx-twitter/commit/262ab64a2d853920b688c49d3f70937f69cb0e27))
+
 ## [2.6.0](https://github.com/rx-twitter/rx-twitter/compare/v2.5.0...v2.6.0) (2026-07-26)
 
 
