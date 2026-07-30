@@ -14,7 +14,7 @@ import type { GuildDeliveryTarget } from "@/core/models/Announcement";
 import { AnnouncementService } from "@/core/services/AnnouncementService";
 import { ArticlePostService } from "@/core/services/ArticlePostService";
 import { BanService } from "@/core/services/BanService";
-import { ChannelConfigService } from "@/core/services/ChannelConfigService";
+import { ChannelConfigService, getFallbackPolicy } from "@/core/services/ChannelConfigService";
 import { MediaHandler } from "@/core/services/MediaHandler";
 import { TweetProcessor } from "@/core/services/TweetProcessor";
 import { RedisAnnouncementRepository } from "@/infrastructure/db/RedisAnnouncementRepository";
@@ -100,6 +100,12 @@ const articlePostRepository = new RedisArticlePostRepository();
 // P0: Channel Config Repository & Service
 const channelConfigRepository = new RedisChannelConfigRepository();
 const channelConfigService = new ChannelConfigService(channelConfigRepository);
+
+// 既定は allow のため、deny を明示した運用者が設定の反映を確認できるよう起動時に出力する
+const fallbackPolicy = getFallbackPolicy();
+logger.info(
+  `[ChannelConfig] Fallback policy: REDIS_DOWN=${fallbackPolicy.redisDown}, CONFIG_NOT_FOUND=${fallbackPolicy.configNotFound}`
+);
 
 // Core層
 const tweetProcessor = new TweetProcessor();
