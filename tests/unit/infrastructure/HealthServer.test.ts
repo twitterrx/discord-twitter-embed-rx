@@ -164,6 +164,37 @@ describe("HealthServer", () => {
   });
 
   // -----------------------------------------------------------
+  // お知らせ配信コンシューマのヘルスチェック
+  // -----------------------------------------------------------
+  describe("announcement consumer health", () => {
+    it("dep 未指定時は checks に announcementConsumer を含めない", async () => {
+      const res = await server.honoApp.request("/health");
+      const body = (await res.json()) as { checks: Record<string, unknown> };
+      expect(body.checks).not.toHaveProperty("announcementConsumer");
+    });
+
+    it("consumer が健全なら readyz は 200 で consumer=true を返す", async () => {
+      const s = new HealthServer(createMockDeps({ isAnnouncementConsumerHealthy: () => true }), 0);
+      const res = await s.honoApp.request("/readyz");
+      expect(res.status).toBe(200);
+      expect(await res.json()).toMatchObject({
+        status: "ok",
+        checks: { redis: true, discord: true, announcementConsumer: true },
+      });
+    });
+
+    it("consumer が不健全なら readyz は 503 を返す", async () => {
+      const s = new HealthServer(createMockDeps({ isAnnouncementConsumerHealthy: () => false }), 0);
+      const res = await s.honoApp.request("/readyz");
+      expect(res.status).toBe(503);
+      expect(await res.json()).toMatchObject({
+        status: "not ready",
+        checks: { announcementConsumer: false },
+      });
+    });
+  });
+
+  // -----------------------------------------------------------
   // 実サーバー経由（結合動作確認）
   // -----------------------------------------------------------
   describe("real HTTP server", () => {
