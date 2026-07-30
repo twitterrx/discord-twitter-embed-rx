@@ -18,7 +18,6 @@ const createMockRepo = (): IChannelConfigRepository => ({
   getConfig: vi.fn(),
   saveConfig: vi.fn(),
   notifyUpdate: vi.fn(),
-  isChannelAllowed: vi.fn(),
 });
 
 const createGuildConfig = (
