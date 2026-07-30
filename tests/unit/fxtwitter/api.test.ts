@@ -16,7 +16,13 @@ import { get2StatusId } from "@/fxtwitter/generated/default";
 
 const mockGet2StatusId = vi.mocked(get2StatusId);
 
-const validThread = { code: 200, status: { type: "status", text: "hello" } } as unknown as ConstructorParameters<typeof SocialThread>[0];
+// SocialThread は zod スキーマ（値）と入力型の両方が同名で export されている。
+// ここで欲しいのは型のほうなので、型位置の SocialThread をそのまま使う。
+// 中身は safeParse をモックするため最小限の部分データで足りる。
+const validThread = {
+  code: 200,
+  status: { type: "status", text: "hello" },
+} as unknown as SocialThread;
 
 describe("FxTwitterApi", () => {
   let api: FxTwitterApi;

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { mediaUrl } from "../../../fixtures/testMediaUrl";
 
 import type { FxTwitterApi } from "@/fxtwitter/api";
@@ -16,7 +16,12 @@ vi.mock("@/utils/logger", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-type TwitterStatus = Extract<SocialThread["status"], { type: "status" }>;
+/**
+ * SocialThread["status"] は Zod の再帰スキーマ（quote の自己参照）により
+ * input 型が unknown へ潰れるため、Extract では絞り込めない。
+ * 実体は APITwitterStatus なのでそちらを直接使う。
+ */
+type TwitterStatus = APITwitterStatus;
 
 const createFxAuthor = (overrides: Partial<APIUser> = {}): APIUser => ({
   type: "profile",
@@ -25,6 +30,18 @@ const createFxAuthor = (overrides: Partial<APIUser> = {}): APIUser => ({
   screen_name: "test_user",
   avatar_url: mediaUrl("icon.jpg"),
   banner_url: mediaUrl("banner.jpg"),
+  description: "test bio",
+  raw_description: { text: "test bio", facets: [] },
+  location: "Tokyo",
+  url: "https://x.com/test_user",
+  protected: false,
+  followers: 100,
+  following: 50,
+  statuses: 10,
+  media_count: 5,
+  likes: 20,
+  joined: "2020-01-01T00:00:00.000Z",
+  website: null,
   ...overrides,
 });
 
@@ -46,8 +63,20 @@ const createFxStatus = (overrides: Partial<APITwitterStatus> = {}): TwitterStatu
   created_timestamp: 1704067200,
   likes: 100,
   reposts: 50,
+  quotes: 5,
   replies: 10,
   author: createFxAuthor(),
+  media: {},
+  raw_text: { text: "This is a test tweet", display_text_range: [0, 20], facets: [] },
+  lang: "en",
+  possibly_sensitive: false,
+  replying_to: null,
+  source: "Twitter Web App",
+  embed_card: "tweet",
+  provider: "twitter",
+  is_note_tweet: false,
+  community_note: null,
+  reposted_by: null,
   ...overrides,
 });
 
@@ -86,6 +115,8 @@ const createFxVideo = (overrides: Partial<NonNullable<APITwitterStatusMedia["vid
 const createFxResponse = (status: TwitterStatus): SocialThread => ({
   code: 200,
   status,
+  thread: null,
+  author: null,
 });
 
 const createFxArticle = (overrides: Partial<APITwitterStatusArticle> = {}): APITwitterStatusArticle => ({
@@ -175,8 +206,8 @@ function generateFxMediaPatterns(): FxMediaPattern[] {
 
   // (B) media.all がなく photos + videos のみ（フォールバック）
   const fallbackCombos: {
-    photos: string[];
-    videos: string[];
+    photos: NonNullable<APITwitterStatusMedia["photos"]>[number]["type"][];
+    videos: NonNullable<APITwitterStatusMedia["videos"]>[number]["type"][];
   }[] = [
     { photos: [], videos: [] },
     { photos: ["photo"], videos: [] },
@@ -223,12 +254,13 @@ function generateFxMediaPatterns(): FxMediaPattern[] {
 const FX_MEDIA_PATTERNS = generateFxMediaPatterns();
 
 describe("FxTwitterAdapter", () => {
-  let mockApi: { getPostInformation: ReturnType<typeof vi.fn> };
+  let mockApi: { getPostInformation: Mock<FxTwitterApi["getPostInformation"]> };
   let adapter: FxTwitterAdapter;
 
   beforeEach(() => {
-    mockApi = { getPostInformation: vi.fn() };
-    adapter = new FxTwitterAdapter(mockApi as FxTwitterApi);
+    mockApi = { getPostInformation: vi.fn<FxTwitterApi["getPostInformation"]>() };
+    // adapter が利用するのは getPostInformation のみのため、部分実装を注入する
+    adapter = new FxTwitterAdapter(mockApi as unknown as FxTwitterApi);
   });
 
   describe("fetchTweet", () => {
@@ -534,7 +566,8 @@ describe("FxTwitterAdapter", () => {
     });
 
     it("レスポンスに status が含まれない場合 undefined を返す", async () => {
-      mockApi.getPostInformation.mockResolvedValue({ code: 404 });
+      // status を含まない不正レスポンスを意図的に流し込む
+      mockApi.getPostInformation.mockResolvedValue({ code: 404 } as unknown as SocialThread);
 
       const result = await adapter.fetchTweet("https://x.com/user/status/123");
 

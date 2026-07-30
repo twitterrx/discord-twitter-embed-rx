@@ -12,6 +12,12 @@
 
 import { describe, it, expect, beforeAll } from "vitest";
 
+/** Dashboard API のエラーレスポンス（このテストで参照する範囲のみ） */
+interface ApiErrorResponse {
+  success: boolean;
+  error: { code: string };
+}
+
 const DASHBOARD_URL = process.env.DASHBOARD_URL || "http://localhost:4321";
 const TEST_GUILD_ID = "123456789012345678";
 
@@ -51,7 +57,7 @@ describe("E2E: Dashboard API", () => {
       const response = await fetch(`${DASHBOARD_URL}/api/guilds`);
       expect(response.status).toBe(401);
 
-      const body = await response.json();
+      const body = (await response.json()) as ApiErrorResponse;
       expect(body.success).toBe(false);
       expect(body.error.code).toBe("UNAUTHORIZED");
     });
@@ -62,7 +68,7 @@ describe("E2E: Dashboard API", () => {
       const response = await fetch(`${DASHBOARD_URL}/api/guilds/${TEST_GUILD_ID}/config`);
       expect(response.status).toBe(401);
 
-      const body = await response.json();
+      const body = (await response.json()) as ApiErrorResponse;
       expect(body.error.code).toBe("UNAUTHORIZED");
     });
 
@@ -76,7 +82,7 @@ describe("E2E: Dashboard API", () => {
       });
       expect(response.status).toBe(401);
 
-      const body = await response.json();
+      const body = (await response.json()) as ApiErrorResponse;
       expect(body.error.code).toBe("UNAUTHORIZED");
     });
 
@@ -86,7 +92,7 @@ describe("E2E: Dashboard API", () => {
       const response = await fetch(`${DASHBOARD_URL}/api/guilds/${TEST_GUILD_ID}/audit-logs`);
       expect(response.status).toBe(401);
 
-      const body = await response.json();
+      const body = (await response.json()) as ApiErrorResponse;
       expect(body.error.code).toBe("UNAUTHORIZED");
     });
 
@@ -96,7 +102,7 @@ describe("E2E: Dashboard API", () => {
       const response = await fetch(`${DASHBOARD_URL}/api/guilds/${TEST_GUILD_ID}/channels`);
       expect(response.status).toBe(401);
 
-      const body = await response.json();
+      const body = (await response.json()) as ApiErrorResponse;
       expect(body.error.code).toBe("UNAUTHORIZED");
     });
 
@@ -109,7 +115,7 @@ describe("E2E: Dashboard API", () => {
       });
       expect(response.status).toBe(401);
 
-      const body = await response.json();
+      const body = (await response.json()) as ApiErrorResponse;
       expect(body.error.code).toBe("UNAUTHORIZED");
     });
 

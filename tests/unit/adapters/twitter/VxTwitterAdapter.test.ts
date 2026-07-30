@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { mediaUrl } from "../../../fixtures/testMediaUrl";
 
 import type { VxTwitterApi } from "@/vxtwitter/api";
@@ -53,11 +53,11 @@ interface VxMediaPattern {
  * type 文字列から TweetMedia.type へのマッピング
  * vxTwitter の media_extended.type の値を internal な型に変換する
  */
-function vxTypeToTweetType(type: string): "photo" | "video" {
+function vxTypeToTweetType(type: MediaExtended["type"]): "photo" | "video" {
   return type === "video" || type === "animated_gif" ? "video" : "photo";
 }
 
-function createMediaExtended(type: string, idx: number): MediaExtended {
+function createMediaExtended(type: MediaExtended["type"], idx: number): MediaExtended {
   const isVideo = type === "video";
   const isGif = type === "animated_gif";
   return {
@@ -81,7 +81,7 @@ function createMediaExtended(type: string, idx: number): MediaExtended {
  */
 function* generateVxMediaPatterns(): Generator<VxMediaPattern> {
   // (A) media_extended が存在するケース
-  const typeCombos: string[][] = [
+  const typeCombos: MediaExtended["type"][][] = [
     [],            // メディアなし
     ["image"],     // 写真1枚
     ["image", "image"], // 写真2枚
@@ -142,12 +142,13 @@ function* generateVxMediaPatterns(): Generator<VxMediaPattern> {
 const VX_MEDIA_PATTERNS = Array.from(generateVxMediaPatterns());
 
 describe("VxTwitterAdapter", () => {
-  let mockApi: { getPostInformation: ReturnType<typeof vi.fn> };
+  let mockApi: { getPostInformation: Mock<VxTwitterApi["getPostInformation"]> };
   let adapter: VxTwitterAdapter;
 
   beforeEach(() => {
-    mockApi = { getPostInformation: vi.fn() };
-    adapter = new VxTwitterAdapter(mockApi as VxTwitterApi);
+    mockApi = { getPostInformation: vi.fn<VxTwitterApi["getPostInformation"]>() };
+    // adapter が利用するのは getPostInformation のみのため、部分実装を注入する
+    adapter = new VxTwitterAdapter(mockApi as unknown as VxTwitterApi);
   });
 
   describe("fetchTweet", () => {
