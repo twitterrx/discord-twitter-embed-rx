@@ -3,7 +3,7 @@ import { mediaUrl } from "../../../fixtures/testMediaUrl";
 
 import type { FxTwitterApi } from "@/fxtwitter/api";
 import type {
-  SocialThread,
+  SocialThreadOutput,
   APITwitterStatus,
   APITwitterStatusArticle,
   APIUser,
@@ -17,9 +17,15 @@ vi.mock("@/utils/logger", () => ({
 }));
 
 /**
- * SocialThread["status"] は Zod の再帰スキーマ（quote の自己参照）により
- * input 型が unknown へ潰れるため、Extract では絞り込めない。
- * 実体は APITwitterStatus なのでそちらを直接使う。
+ * API が返すのは Zod で検証済みのデータなので、入力型 SocialThread ではなく
+ * 出力型 SocialThreadOutput を使う。
+ *
+ * なお SocialThread["status"]（入力型）は unknown へ潰れる。orval が再帰スキーマに
+ * 付ける zod.ZodType<APITwitterStatus> は Input 型引数が省略されており、
+ * zod v4 では既定の unknown になるため。出力型側は正しい union に解決される。
+ *
+ * また status の判別子 type は Bluesky/Mastodon など他プラットフォームでも "status" のため、
+ * type だけでは Twitter を特定できない。ここでは Twitter の型を直接指す。
  */
 type TwitterStatus = APITwitterStatus;
 
@@ -112,7 +118,7 @@ const createFxVideo = (overrides: Partial<NonNullable<APITwitterStatusMedia["vid
   ...overrides,
 });
 
-const createFxResponse = (status: TwitterStatus): SocialThread => ({
+const createFxResponse = (status: TwitterStatus): SocialThreadOutput => ({
   code: 200,
   status,
   thread: null,
@@ -567,7 +573,7 @@ describe("FxTwitterAdapter", () => {
 
     it("レスポンスに status が含まれない場合 undefined を返す", async () => {
       // status を含まない不正レスポンスを意図的に流し込む
-      mockApi.getPostInformation.mockResolvedValue({ code: 404 } as unknown as SocialThread);
+      mockApi.getPostInformation.mockResolvedValue({ code: 404 } as unknown as SocialThreadOutput);
 
       const result = await adapter.fetchTweet("https://x.com/user/status/123");
 
