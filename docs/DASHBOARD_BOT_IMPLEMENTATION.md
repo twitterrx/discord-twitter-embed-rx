@@ -422,6 +422,7 @@ export class ChannelConfigService {
       
       case 'not_found': {
         // CONFIG_NOT_FOUND_FALLBACK に従う
+        // 注記(#549): 以下の既定値は設計当時のもの。現行の既定は両変数とも allow
         const fallback = process.env.CONFIG_NOT_FOUND_FALLBACK || 'deny';
         console.log(`[ChannelConfig] Config not found for ${guildId}, fallback: ${fallback}`);
         return fallback === 'allow';

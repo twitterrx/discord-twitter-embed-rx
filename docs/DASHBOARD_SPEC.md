@@ -225,8 +225,8 @@ Discord Bot「TwitterRX」において、特定のチャンネルでのみ応答
 │       │                         ✗                          │              │
 │       │                                            セッション失敗          │
 │       └── REDIS_DOWN_FALLBACK に従う                Dashboard ログイン不可  │
-│           deny（デフォルト）: 全メッセージ無視                               │
-│           allow: 全チャンネル許可（セキュリティリスク）                       │
+│           allow（デフォルト）: 全チャンネル許可                              │
+│           deny: 全メッセージ無視（whitelist を維持したい場合）                │
 │                                                                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
@@ -250,18 +250,18 @@ Discord Bot「TwitterRX」において、特定のチャンネルでのみ応答
 >
 > | 状況 | Bot の挙動 | 説明 |
 > |------|------------|------|
-> | config キーが存在しない（not_found） | `CONFIG_NOT_FOUND_FALLBACK` に従う | デフォルト deny。allow にするには環境変数で明示 |
-> | Redis 自体に接続できない（error） | `REDIS_DOWN_FALLBACK` に従う | デフォルト deny。|
+> | config キーが存在しない（not_found） | `CONFIG_NOT_FOUND_FALLBACK` に従う | デフォルト allow。制限するには環境変数で `deny` を明示 |
+> | Redis 自体に接続できない（error） | `REDIS_DOWN_FALLBACK` に従う | デフォルト allow。|
 >
-> **これにより「設定未作成」と「Redis 障害」を明確に分離し、両方デフォルト deny で安全側に倒す。**
+> **これにより「設定未作成」と「Redis 障害」を明確に分離しつつ、両方デフォルト allow で可用性を優先する（#549）。**
 
 | 障害パターン | Bot の挙動 | Dashboard の挙動 | 復旧方法 |
 |-------------|-----------|-----------------|---------|
-| **Redis 死亡** | `REDIS_DOWN_FALLBACK` に従う（デフォルト: deny = 全無視） | ログイン不可、設定保存不可 | 自動復旧 |
+| **Redis 死亡** | `REDIS_DOWN_FALLBACK` に従う（デフォルト: allow = 全許可） | ログイン不可、設定保存不可 | 自動復旧 |
 | **pub/sub 切断** | 劣化モード（ギルド単位最小間隔で Redis GET） | 正常動作 | 自動再接続 |
 | **Bot 再起動** | 起動後に自動復旧 | 正常動作 | 自動復旧 |
 | **Dashboard 再起動** | 正常動作（Bot は影響なし） | 起動時に SQLite→Redis reseed | 自動復旧 |
-| **Redis キー消失** | `CONFIG_NOT_FOUND_FALLBACK` に従う（デフォルト: deny） | 起動時/10分ごとの reconcile で補完 | Dashboard 再起動で強制 reseed |
+| **Redis キー消失** | `CONFIG_NOT_FOUND_FALLBACK` に従う（デフォルト: allow） | 起動時/10分ごとの reconcile で補完 | Dashboard 再起動で強制 reseed |
 | **SQLite 破損** | Redis キャッシュが残っていれば継続動作 | DB エラー | バックアップから復元 |
 
 ---
@@ -319,6 +319,9 @@ interface ConfigAuditLog {
 ```
 
 ### 4.4 判定ロジック
+
+> **注記（#549 以降）**: 以下は設計当時の実装例であり、既定値は当時のもの。
+> 現行の既定は両変数とも `allow` で、実装は `src/core/services/ChannelConfigService.ts` の `parseFallback()` を参照。
 
 ```typescript
 function isChannelAllowed(guildId: string, channelId: string): boolean {
@@ -718,7 +721,7 @@ docker compose restart dashboard
 
 > **重要**: 
 > - Bot は SQLite を直接読み書きしない。Dashboard のみが SQLite を操作し、Redis を経由して Bot と同期する。
-> - **config の作成責任は Dashboard にある**。Bot は config がない場合 `CONFIG_NOT_FOUND_FALLBACK` に従う（デフォルト: deny）。
+> - **config の作成責任は Dashboard にある**。Bot は config がない場合 `CONFIG_NOT_FOUND_FALLBACK` に従う（デフォルト: allow）。
 > - Bot は `joined` フラグと `channels` キャッシュのみを管理する。
 
 > **★ P0対応: Redis消失時の復旧導線（SQLite→Redis再シード）**
@@ -1911,8 +1914,8 @@ export interface IChannelConfigRepository {
 
 - **isChannelAllowed**: ConfigResult.kind に応じて分岐
   - `found`: 設定に従う
-  - `not_found`: `CONFIG_NOT_FOUND_FALLBACK` に従う（デフォルト: deny）
-  - `error`: `REDIS_DOWN_FALLBACK` に従う（デフォルト: deny）
+  - `not_found`: `CONFIG_NOT_FOUND_FALLBACK` に従う（デフォルト: allow）
+  - `error`: `REDIS_DOWN_FALLBACK` に従う（デフォルト: allow）
 
 ### 9.2 MessageHandler への統合
 
@@ -3145,7 +3148,7 @@ dashboard/
 
 **フォールバック動作**:
 - 設定未作成（not_found）: `CONFIG_NOT_FOUND_FALLBACK` に従う（デフォルトは `ALLOW_ALL`）
-- Redis 障害（error）: `REDIS_DOWN_FALLBACK` に従う（デフォルトは `DENY_ALL`）
+- Redis 障害（error）: `REDIS_DOWN_FALLBACK` に従う（デフォルトは `ALLOW_ALL`）
 
 ### 9.3 ギルド参加/離脱イベント
 
@@ -3242,8 +3245,13 @@ async function checkHealthOnStartup(repository: RedisChannelConfigRepository): P
 
 > **★ P0対応: Redis 障害の可視化（MUST）**
 >
-> `REDIS_DOWN_FALLBACK=deny` はセキュリティ的に正しいが、Bot が黙って沈黙するだけだと
-> 運用者は「壊れた」と思い込んで問い合わせが殺到する。
+> **状況（#549 以降）**: 既定は `allow` になったため、Redis 障害で沈黙するのは
+> `REDIS_DOWN_FALLBACK=deny` を明示した運用者に限られる。
+> ただし「deny を明示したつもりが効いていない」ことにも気づけないため、
+> 起動時に `[ChannelConfig] Fallback policy: ...` を INFO 出力し、
+> 解釈できない値は WARN する実装を入れた（`parseFallback()`）。
+>
+> 以下は当時の提案内容。
 >
 > **MUST: Bot 側のログ出力**
 >
@@ -3325,6 +3333,7 @@ export class ChannelConfigService {
   }
 
   // ★ P0対応: ConfigResult（三値）を適切に処理
+  // 注記(#549): 以下の既定値は設計当時のもの。現行の既定は両変数とも allow
   async isChannelAllowed(guildId: string, channelId: string): Promise<boolean> {
     const result = await this.repository.getConfig(guildId);
     
@@ -3865,7 +3874,8 @@ DATABASE_URL=file:/app/data/dashboard.db
 |--------|------|------|-----|
 | `DISCORD_BOT_TOKEN` | ✅ | Discord Bot トークン | `OTk...` |
 | `REDIS_URL` | ✅ | Redis 接続 URL | `redis://redis:6379` |
-| `REDIS_DOWN_FALLBACK` | - | Redis 障害時の挙動（`deny`/`allow`）デフォルト: `deny` | `deny` |
+| `REDIS_DOWN_FALLBACK` | - | Redis 障害時の挙動（`allow`/`deny`）デフォルト: `allow` | `allow` |
+| `CONFIG_NOT_FOUND_FALLBACK` | - | 設定未作成時の挙動（`allow`/`deny`）デフォルト: `allow` | `allow` |
 | `ENABLE_ORPHAN_CLEANUP` | - | 起動時の孤立キー掃除（デフォルト: `false`） | `false` |
 | `ENABLE_METRICS` | - | `/metrics` エンドポイント有効化（デフォルト: `false`） | `false` |
 
@@ -4210,7 +4220,7 @@ if (ENABLE_METRICS) {
 | **503 時の UX 改善** | レスポンスに「保存完了の可能性」と現在 version を返す。UI は自動で GET し直して state を合わせる |
 | **BOT_NOT_JOINED_OR_OFFLINE** | joined 判定で Bot オフラインの可能性も示唆するエラーメッセージに改善 |
 | **getConfig() 三値化** | `ConfigResult` 型で `found`/`not_found`/`error` を明確に分離。Redis 障害と未設定を区別可能に |
-| **REDIS_DOWN_FALLBACK** | `error` 時に適用。`not_found`（未設定）は `CONFIG_NOT_FOUND_FALLBACK` に従う（両方デフォルト deny） |
+| **REDIS_DOWN_FALLBACK** | `error` 時に適用。`not_found`（未設定）は `CONFIG_NOT_FOUND_FALLBACK` に従う（両方デフォルト allow / #549 で deny から変更） |
 | **Nginx upstream 統一** | `/_astro/` も `twitterrx_dashboard_backend` に統一 |
 | **レート制限の原子化** | Lua スクリプトで ZREMRANGEBYSCORE → ZCARD → ZADD を原子的に実行 |
 | **ENCRYPTION_SALT 必須化** | デフォルト値を禁止、未設定時は起動失敗 |
@@ -4280,7 +4290,7 @@ if (ENABLE_METRICS) {
 
 - Bot は `joined` フラグと `channels` キャッシュのみ管理
 - Dashboard の `GET /api/guilds/{guildId}/config` で SQLite に行がなければデフォルト作成
-- Bot は config がない場合 `CONFIG_NOT_FOUND_FALLBACK` に従う（デフォルト: deny）
+- Bot は config がない場合 `CONFIG_NOT_FOUND_FALLBACK` に従う（デフォルト: allow）
 - 「設定は UI を開いた瞬間に整う」設計
 
 ### 14.6 guild.channels.cache の信頼性
@@ -4325,26 +4335,34 @@ if (ENABLE_METRICS) {
 > 
 > **環境変数での切替**:
 > ```
-> REDIS_DOWN_FALLBACK=deny   # 全チャンネル拒否（★デフォルト、安全優先）
-> REDIS_DOWN_FALLBACK=allow  # 全チャンネル許可（可用性優先）
+> REDIS_DOWN_FALLBACK=allow  # 全チャンネル許可（★デフォルト、可用性優先）
+> REDIS_DOWN_FALLBACK=deny   # 全チャンネル拒否（障害中も whitelist を維持する）
 > ```
 > 
-> **デフォルトが `deny` である理由**:
-> - 配布版として、Redis 障害時に Bot が勝手にどこでも反応する状態は危険
-> - 荒らし耐性の観点からも、安全側に倒すべき
-> - 可用性を優先したい運用者は明示的に `allow` を選択できる
+> **デフォルトが `allow` である理由**（#549 で deny から変更）:
+> - チャンネルを個別に絞る運用者はマイノリティであり、多数派は設定を触らない
+> - 既定を `deny` にすると、障害時に「Bot が壊れた」と見える形で多数派に影響が出る
+> - 制限したい運用者は `deny` を明示でき、その選択は起動時ログで確認できる
+> 
+> **受け入れているトレードオフ**:
+> - **Bot 再起動 × Redis 障害中**の交差では、インメモリキャッシュが空のまま `error` 経路に入るため、
+>   whitelist を設定済みのギルドでも一時的に全チャンネルで反応する
+> - ただし Redis エラー時にキャッシュは破棄されない（`not_found` のときのみ破棄）ため、
+>   障害中でもキャッシュに乗っているギルドは正常に動作し続ける。影響はキャッシュミス時に限定される
 > 
 > **★ P0対応: not_found も error も同じく環境変数で制御**
 > 
 > | 状況 | 適用する環境変数 | デフォルト |
 > |------|-------------------|------------|
-> | `not_found`（設定未作成） | `CONFIG_NOT_FOUND_FALLBACK` | `deny` |
-> | `error`（Redis障害） | `REDIS_DOWN_FALLBACK` | `deny` |
+> | `not_found`（設定未作成） | `CONFIG_NOT_FOUND_FALLBACK` | `allow` |
+> | `error`（Redis障害） | `REDIS_DOWN_FALLBACK` | `allow` |
 > 
-> **後方互換性が必要な場合（移行ガイド）**:
-> - 既存ユーザーは `CONFIG_NOT_FOUND_FALLBACK=allow` を設定することで従来動作を維持可能
-> - 新規ユーザーはデフォルト deny で安全に開始
-> - README に移行手順を必須記載（→ 移行ガイドセクション参照）
+> 値は `trim().toLowerCase()` で正規化される。解釈できない値は WARN を出して既定の `allow` に倒れる。
+> 有効な設定は起動時に `[ChannelConfig] Fallback policy: ...` として INFO ログに出力される。
+> 
+> **制限したい運用者向け**:
+> - `CONFIG_NOT_FOUND_FALLBACK=deny` … Dashboard で設定するまで反応させない
+> - `REDIS_DOWN_FALLBACK=deny` … 障害中も whitelist を維持する
 > 
 > **★ P0対応: 三値による明確な分離**
 > 
@@ -4480,7 +4498,7 @@ if (ENABLE_METRICS) {
 | **「セッションが切れました」が頻発** | Discord アクセストークンの期限切れ | 再ログインで復旧（仕様通りの動作） |
 | **チャンネル一覧が空のまま** | ① Bot がチャンネル情報を取得できていない ② Bot がオフライン | ① 「再取得ボタン」を押して 10分待つ ② Bot コンテナを確認 |
 | **設定変更が 409 Conflict になる** | 別のユーザー/タブが同時に設定を変更した | ページをリロードして最新の設定を取得し直す |
-| **Bot がどこでも反応しない** | ① Redis がダウン + `REDIS_DOWN_FALLBACK=deny` ② whitelist が空 | ① Redis コンテナを確認 ② Dashboard で whitelist を設定 |
+| **Bot がどこでも反応しない** | ① Redis がダウン + `REDIS_DOWN_FALLBACK=deny` を明示している ② `CONFIG_NOT_FOUND_FALLBACK=deny` を明示していて設定が未作成 ③ whitelist が空 | ① Redis コンテナを確認（既定の `allow` なら障害中も反応する） ② 起動時の `[ChannelConfig] Fallback policy` ログで有効値を確認 ③ Dashboard で whitelist を設定 |
 | **Dashboard が 503 を返す** | Redis への接続に失敗 | ① Redis コンテナを確認 ② `docker compose logs redis` でエラー確認 |
 
 ### ヘルスチェック手順

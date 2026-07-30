@@ -84,8 +84,8 @@ npm run test:e2e
 |--------|------|-----------|
 | `REDIS_URL` | Redis 接続 URL | `redis://localhost:6379` |
 | `DASHBOARD_URL` | Dashboard のベース URL | `http://localhost:4321` |
-| `CONFIG_NOT_FOUND_FALLBACK` | 設定未作成時の挙動 | `deny` |
-| `REDIS_DOWN_FALLBACK` | Redis 障害時の挙動 | `deny` |
+| `CONFIG_NOT_FOUND_FALLBACK` | 設定未作成時の挙動 | `allow` |
+| `REDIS_DOWN_FALLBACK` | Redis 障害時の挙動 | `allow` |
 
 ## 📝 テストの書き方
 

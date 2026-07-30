@@ -6,11 +6,41 @@ import logger from "@/utils/logger";
 /** お知らせ配信先のデフォルト（未設定時はオーナーへの DM） */
 const DEFAULT_ANNOUNCE_TARGET: AnnounceTarget = { mode: "dm" };
 
+/** フォールバック方針。既定は allow（可用性優先）、制限したい運用者のみ deny を明示する */
+export type FallbackPolicy = "allow" | "deny";
+
+/**
+ * フォールバック設定の環境変数を解釈する
+ *
+ * 既定を allow に倒しているため、deny を明示した運用者が「設定が効いているか」を
+ * 確認できるよう、解釈できない値は警告する（起動時ログと合わせて誤設定を検知する）。
+ */
+const parseFallback = (raw: string | undefined, name: string): FallbackPolicy => {
+  const normalized = raw?.trim().toLowerCase();
+
+  if (!normalized) {
+    return "allow";
+  }
+
+  if (normalized === "allow" || normalized === "deny") {
+    return normalized;
+  }
+
+  logger.warn(`[ChannelConfig] Invalid ${name}="${raw}", falling back to "allow"`);
+  return "allow";
+};
+
 /**
  * P0対応: フォールバック設定
  */
-const REDIS_DOWN_FALLBACK = process.env.REDIS_DOWN_FALLBACK === "deny" ? "deny" : "allow";
-const CONFIG_NOT_FOUND_FALLBACK = process.env.CONFIG_NOT_FOUND_FALLBACK === "allow" ? "allow" : "deny";
+const REDIS_DOWN_FALLBACK = parseFallback(process.env.REDIS_DOWN_FALLBACK, "REDIS_DOWN_FALLBACK");
+const CONFIG_NOT_FOUND_FALLBACK = parseFallback(process.env.CONFIG_NOT_FOUND_FALLBACK, "CONFIG_NOT_FOUND_FALLBACK");
+
+/**
+ * 有効なフォールバック方針を取得する（起動時ログ用）
+ */
+export const getFallbackPolicy = () =>
+  ({ redisDown: REDIS_DOWN_FALLBACK, configNotFound: CONFIG_NOT_FOUND_FALLBACK }) as const;
 
 /**
  * チャンネル設定サービス
