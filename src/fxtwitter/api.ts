@@ -48,9 +48,11 @@ export class FxTwitterApi {
       }
 
       // 上流が JSON を返さなかった場合（HTML のエラーページ等）。
-      // 回復可能でフォールバックも成立するため、スタックトレースは残さず warn に留める。
+      // 回復可能なためスタックトレースは残さず warn に留める。
+      // このクラスは自身がフォールバック連鎖のどこに位置するか知らないため、
+      // 後続の有無には言及しない（判断と通知は TwitterAdapter の責務）。
       if (e instanceof ResponseContentTypeError) {
-        logger.warn("FxTwitterApi: Non-JSON response, fallback will be attempted", {
+        logger.warn("FxTwitterApi: Non-JSON response received", {
           url,
           contentType: e.contentType,
           duration: `${duration}ms`,

@@ -101,6 +101,18 @@ describe("FxTwitterApi", () => {
       expect(logger.warn).toHaveBeenCalledTimes(1);
     });
 
+    it("フォールバックの有無に言及しない文言で記録する", async () => {
+      mockGet2StatusId.mockRejectedValue(contentTypeError());
+
+      await api.getPostInformation("https://x.com/user/status/123");
+
+      // このクラスは自身がフォールバック連鎖のどこにいるか知らない。
+      // 後続が実行されると読める文言を残さないことを固定する。
+      const [message] = vi.mocked(logger.warn).mock.calls[0] as unknown as [string];
+      expect(message).toBe("FxTwitterApi: Non-JSON response received");
+      expect(message).not.toMatch(/fallback/i);
+    });
+
     it("content-type を含め、スタックトレースは含めない", async () => {
       mockGet2StatusId.mockRejectedValue(contentTypeError());
 
