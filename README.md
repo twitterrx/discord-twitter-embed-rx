@@ -89,6 +89,8 @@ cp .env.example .env
 | `REDIS_DOWN_FALLBACK`       | Redis 障害時の挙動。`allow`: 全許可 / `deny`: 全無視 | `allow`    |
 | `CONFIG_NOT_FOUND_FALLBACK` | 設定未作成時の挙動                                   | `allow`    |
 | `ENABLE_ORPHAN_CLEANUP`     | 起動時に孤立した設定キーを掃除                       | `false`    |
+| `LOG_DIR`                   | ログの出力先ディレクトリ                             | `<repo>/../logs` |
+| `REDIS_TTL`                 | リプライログの保持期間（秒）                         | `86400`    |
 
 ## 起動方法
 
