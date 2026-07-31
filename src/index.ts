@@ -14,7 +14,7 @@ import type { GuildDeliveryTarget } from "@/core/models/Announcement";
 import { AnnouncementService } from "@/core/services/AnnouncementService";
 import { ArticlePostService } from "@/core/services/ArticlePostService";
 import { BanService } from "@/core/services/BanService";
-import { ChannelConfigService, getFallbackPolicy } from "@/core/services/ChannelConfigService";
+import { ChannelConfigService } from "@/core/services/ChannelConfigService";
 import { MediaHandler } from "@/core/services/MediaHandler";
 import { TweetProcessor } from "@/core/services/TweetProcessor";
 import { RedisAnnouncementRepository } from "@/infrastructure/db/RedisAnnouncementRepository";
@@ -32,6 +32,7 @@ import { cleanupOrphanedConfigs } from "@/utils/cleanupOrphanedConfigs";
 import logger from "@/utils/logger";
 
 import config, { ROOT_DIR } from "./config/config";
+import { resolveFallbackPolicies } from "./config/fallbackPolicy";
 import { connectRedis } from "./db/connect";
 import { redis } from "./db/init";
 import { deleteReply, popReply } from "./db/replyLogger";
@@ -98,13 +99,13 @@ const replyLogger = new RedisReplyLogger();
 const articlePostRepository = new RedisArticlePostRepository();
 
 // P0: Channel Config Repository & Service
+const fallbackPolicies = resolveFallbackPolicies();
 const channelConfigRepository = new RedisChannelConfigRepository();
-const channelConfigService = new ChannelConfigService(channelConfigRepository);
+const channelConfigService = new ChannelConfigService(channelConfigRepository, fallbackPolicies);
 
 // 既定は allow のため、deny を明示した運用者が設定の反映を確認できるよう起動時に出力する
-const fallbackPolicy = getFallbackPolicy();
 logger.info(
-  `[ChannelConfig] Fallback policy: REDIS_DOWN=${fallbackPolicy.redisDown}, CONFIG_NOT_FOUND=${fallbackPolicy.configNotFound}`
+  `[ChannelConfig] Fallback policy: REDIS_DOWN=${fallbackPolicies.redisDown}, CONFIG_NOT_FOUND=${fallbackPolicies.configNotFound}`
 );
 
 // Core層
