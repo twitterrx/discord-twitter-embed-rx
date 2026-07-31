@@ -1,4 +1,4 @@
-import { HttpResponseError } from "@/infrastructure/http/orvalFetch";
+import { HttpResponseError, ResponseContentTypeError } from "@/infrastructure/http/orvalFetch";
 import logger from "@/utils/logger";
 
 import { get2StatusId } from "./generated/default";
@@ -44,6 +44,19 @@ export class FxTwitterApi {
 
       if (e instanceof HttpResponseError && e.status === 404) {
         logger.debug("FxTwitterApi: Tweet not found (404)", { url, duration: `${duration}ms` });
+        return undefined;
+      }
+
+      // 上流が JSON を返さなかった場合（HTML のエラーページ等）。
+      // 回復可能なためスタックトレースは残さず warn に留める。
+      // このクラスは自身がフォールバック連鎖のどこに位置するか知らないため、
+      // 後続の有無には言及しない（判断と通知は TwitterAdapter の責務）。
+      if (e instanceof ResponseContentTypeError) {
+        logger.warn("FxTwitterApi: Non-JSON response received", {
+          url,
+          contentType: e.contentType,
+          duration: `${duration}ms`,
+        });
         return undefined;
       }
 
