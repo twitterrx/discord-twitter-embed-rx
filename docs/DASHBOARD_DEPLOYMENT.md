@@ -318,8 +318,10 @@ DATABASE_URL=file:/app/data/dashboard.db
 | `REDIS_URL` | ✅ | Redis 接続 URL | `redis://redis:6379` |
 | `REDIS_DOWN_FALLBACK` | - | Redis 障害時の挙動（`allow`/`deny`）デフォルト: `allow` | `allow` |
 | `CONFIG_NOT_FOUND_FALLBACK` | - | 設定未作成時の挙動（`allow`/`deny`）デフォルト: `allow` | `allow` |
-| `ENABLE_ORPHAN_CLEANUP` | - | 起動時の孤立キー掃除（デフォルト: `false`） | `false` |
-| `ENABLE_METRICS` | - | `/metrics` エンドポイント有効化（デフォルト: `false`） | `false` |
+| `ENABLE_ORPHAN_CLEANUP` | - | 起動時の孤立キー掃除（デフォルト: `false`）。有効化は文字列 `"true"` のみ | `false` |
+| `LOG_DIR` | - | ログの出力先ディレクトリ（省略時はリポジトリの1つ上の `logs/`）。空文字を設定するとカレントディレクトリになる | `/app/bot/logs` |
+| `REDIS_TTL` | - | リプライログの保持期間（秒）。デフォルト: `86400` | `86400` |
+| `ENABLE_METRICS` | - | **（未実装）** `/metrics` エンドポイント有効化。設定しても現時点では何も起きない。設計は「メトリクス収集」の節を参照 | - |
 
 ### Dashboard 側
 
