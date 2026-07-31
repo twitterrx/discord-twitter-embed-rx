@@ -706,6 +706,24 @@ describe("FxTwitterAdapter", () => {
       expect(logger.warn).not.toHaveBeenCalled();
     });
 
+    it("provider を欠く status は展開しない", async () => {
+      // 通常は Zod 検証（tests/unit/fxtwitter/generatedSchema.test.ts で固定）で
+      // 弾かれる形だが、ガード単体でも拒否することを境界として明示しておく
+      const status = createFxStatus();
+      delete (status as { provider?: unknown }).provider;
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(status));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledTimes(1);
+      const [, meta] = vi.mocked(logger.warn).mock.calls[0] as unknown as [
+        string,
+        Record<string, unknown>,
+      ];
+      expect(meta.provider).toBeUndefined();
+    });
+
     it("正常な Twitter status では警告を出さない", async () => {
       mockApi.getPostInformation.mockResolvedValue(createFxResponse(createFxStatus()));
 
