@@ -1,13 +1,20 @@
 {
   "name": "rx-twitter",
   "version": "2.6.0",
-  "description": "",
+  "description": "Twitter/Xの投稿URLをDiscord上で見やすいEmbedに展開するBot",
   "type": "module",
   "main": "index.js",
   "private": true,
   "keywords": [
     "discord",
-    "twitter"
+    "discord-bot",
+    "discord.js",
+    "twitter",
+    "x-twitter",
+    "fxtwitter",
+    "vxtwitter",
+    "redis",
+    "typescript"
   ],
   "homepage": "https://github.com/rx-twitter/rx-twitter#readme",
   "bugs": {
