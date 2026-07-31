@@ -1,4 +1,4 @@
-import { HttpResponseError } from "@/infrastructure/http/orvalFetch";
+import { HttpResponseError, ResponseContentTypeError } from "@/infrastructure/http/orvalFetch";
 import logger from "@/utils/logger";
 
 import { getPostInformation } from "./generated/default";
@@ -68,6 +68,17 @@ export class VxTwitterApi {
           });
           throw new VxTwitterServerError(e.status, `VxTwitter API returned ${e.status} error for ${url}`);
         }
+      }
+
+      // 上流が JSON を返さなかった場合（HTML のエラーページ等）。
+      // 回復可能でフォールバックも成立するため、スタックトレースは残さず warn に留める。
+      if (e instanceof ResponseContentTypeError) {
+        logger.warn("VxTwitterApi: Non-JSON response, fallback will be attempted", {
+          url,
+          contentType: e.contentType,
+          duration: `${duration}ms`,
+        });
+        return undefined;
       }
 
       if (process.env.NODE_ENV !== "test") {

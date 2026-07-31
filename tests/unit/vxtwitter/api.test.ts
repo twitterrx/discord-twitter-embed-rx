@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HttpResponseError } from "@/infrastructure/http/orvalFetch";
+import { HttpResponseError, ResponseContentTypeError } from "@/infrastructure/http/orvalFetch";
 import { VxTwitterApi, VxTwitterServerError } from "@/vxtwitter/api";
 import { VxTwitterStatus } from "@/vxtwitter/generated/model";
 import type { VxTwitter } from "@/vxtwitter/vxtwitter";
@@ -14,6 +14,7 @@ vi.mock("@/vxtwitter/generated/default", () => ({
 }));
 
 import { getPostInformation } from "@/vxtwitter/generated/default";
+import logger from "@/utils/logger";
 
 const mockGetPostInformation = vi.mocked(getPostInformation);
 
@@ -120,5 +121,44 @@ describe("VxTwitterApi", () => {
     const result = await api.getPostInformation("https://x.com/user/status/123");
 
     expect(result).toBeUndefined();
+  });
+  describe("JSON 以外のレスポンス", () => {
+    const contentTypeError = () =>
+      new ResponseContentTypeError(
+        "text/html; charset=utf-8",
+        "https://api.vxtwitter.com/user/status/123",
+      );
+
+    it("undefined を返してフォールバックさせる", async () => {
+      mockGetPostInformation.mockRejectedValue(contentTypeError());
+
+      const result = await api.getPostInformation("https://x.com/user/status/123");
+
+      expect(result).toBeUndefined();
+    });
+
+    it("error ではなく warn で記録する", async () => {
+      mockGetPostInformation.mockRejectedValue(contentTypeError());
+
+      await api.getPostInformation("https://x.com/user/status/123");
+
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledTimes(1);
+    });
+
+    it("content-type を含め、スタックトレースは含めない", async () => {
+      mockGetPostInformation.mockRejectedValue(contentTypeError());
+
+      await api.getPostInformation("https://x.com/user/status/123");
+
+      // logger.warn は winston の (infoObject) overload に解決されるため、
+      // 実際の呼び出し形（message, meta）へ明示的に読み替える
+      const [, meta] = vi.mocked(logger.warn).mock.calls[0] as unknown as [
+        string,
+        Record<string, unknown>,
+      ];
+      expect(meta.contentType).toBe("text/html; charset=utf-8");
+      expect(meta).not.toHaveProperty("stack");
+    });
   });
 });

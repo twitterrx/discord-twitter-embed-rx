@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FxTwitterApi } from "@/fxtwitter/api";
 import { SocialThread } from "@/fxtwitter/generated/model";
-import { HttpResponseError } from "@/infrastructure/http/orvalFetch";
+import { HttpResponseError, ResponseContentTypeError } from "@/infrastructure/http/orvalFetch";
 
 vi.mock("@/utils/logger", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
@@ -13,6 +13,7 @@ vi.mock("@/fxtwitter/generated/default", () => ({
 }));
 
 import { get2StatusId } from "@/fxtwitter/generated/default";
+import logger from "@/utils/logger";
 
 const mockGet2StatusId = vi.mocked(get2StatusId);
 
@@ -75,5 +76,44 @@ describe("FxTwitterApi", () => {
     const result = await api.getPostInformation("https://x.com/user/status/123");
 
     expect(result).toBeUndefined();
+  });
+  describe("JSON 以外のレスポンス", () => {
+    const contentTypeError = () =>
+      new ResponseContentTypeError(
+        "text/html; charset=utf-8",
+        "https://api.fxtwitter.com/2/status/123",
+      );
+
+    it("undefined を返す", async () => {
+      mockGet2StatusId.mockRejectedValue(contentTypeError());
+
+      const result = await api.getPostInformation("https://x.com/user/status/123");
+
+      expect(result).toBeUndefined();
+    });
+
+    it("error ではなく warn で記録する", async () => {
+      mockGet2StatusId.mockRejectedValue(contentTypeError());
+
+      await api.getPostInformation("https://x.com/user/status/123");
+
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledTimes(1);
+    });
+
+    it("content-type を含め、スタックトレースは含めない", async () => {
+      mockGet2StatusId.mockRejectedValue(contentTypeError());
+
+      await api.getPostInformation("https://x.com/user/status/123");
+
+      // logger.warn は winston の (infoObject) overload に解決されるため、
+      // 実際の呼び出し形（message, meta）へ明示的に読み替える
+      const [, meta] = vi.mocked(logger.warn).mock.calls[0] as unknown as [
+        string,
+        Record<string, unknown>,
+      ];
+      expect(meta.contentType).toBe("text/html; charset=utf-8");
+      expect(meta).not.toHaveProperty("stack");
+    });
   });
 });
