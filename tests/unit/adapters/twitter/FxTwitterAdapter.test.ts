@@ -11,6 +11,7 @@ import type {
 } from "@/fxtwitter/generated/model";
 import { APITwitterStatus as APITwitterStatusSchema } from "@/fxtwitter/generated/model";
 import { FxTwitterAdapter } from "@/adapters/twitter/FxTwitterAdapter";
+import logger from "@/utils/logger";
 
 vi.mock("@/utils/logger", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
@@ -264,6 +265,7 @@ describe("FxTwitterAdapter", () => {
   let adapter: FxTwitterAdapter;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     mockApi = { getPostInformation: vi.fn<FxTwitterApi["getPostInformation"]>() };
     // adapter が利用するのは getPostInformation のみのため、部分実装を注入する
     adapter = new FxTwitterAdapter(mockApi as unknown as FxTwitterApi);
@@ -656,6 +658,75 @@ describe("FxTwitterAdapter", () => {
       expect(result?.quote?.media).toHaveLength(1);
       expect(result?.quote?.media[0].type).toBe("photo");
       expect(result?.quote?.media[0].url).toBe(mediaUrl("qt_fb_photo.jpg"));
+    });
+  });
+  describe("Twitter 以外の status の扱い", () => {
+    /** 判別子 type は他プラットフォームでも "status" のため、provider で判別する */
+    const createBlueskyStatus = () =>
+      ({
+        ...createFxStatus(),
+        provider: "bluesky",
+      }) as unknown as TwitterStatus;
+
+    const createTombstone = () =>
+      ({
+        type: "tombstone",
+        provider: "twitter",
+        reason: "deleted",
+      }) as unknown as TwitterStatus;
+
+    it("provider が twitter でない status は展開しない", async () => {
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(createBlueskyStatus()));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result).toBeUndefined();
+    });
+
+    it("Twitter 以外の provider は想定外として warn で記録する", async () => {
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(createBlueskyStatus()));
+
+      await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(logger.warn).toHaveBeenCalledTimes(1);
+      const [, meta] = vi.mocked(logger.warn).mock.calls[0] as unknown as [
+        string,
+        Record<string, unknown>,
+      ];
+      expect(meta.provider).toBe("bluesky");
+    });
+
+    it("tombstone は展開せず、日常的な事象として debug で記録する", async () => {
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(createTombstone()));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result).toBeUndefined();
+      expect(logger.debug).toHaveBeenCalledTimes(1);
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("正常な Twitter status では警告を出さない", async () => {
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(createFxStatus()));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result).toBeDefined();
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("引用が tombstone の場合、本体は展開し引用のみ落とす", async () => {
+      const status = createFxStatus({
+        text: "Check this!",
+        quote: createTombstone() as never,
+      });
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(status));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result).toBeDefined();
+      expect(result?.text).toBe("Check this!");
+      expect(result?.quote).toBeUndefined();
     });
   });
 });
