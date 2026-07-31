@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { getTestRedis, closeTestRedis, cleanupTestData, setupTestGuildConfig, generateTestGuildId } from "./helpers";
+import { resolveFallbackPolicies } from "../../src/config/fallbackPolicy";
 import { ChannelConfigService } from "../../src/core/services/ChannelConfigService";
 import { RedisChannelConfigRepository } from "../../src/infrastructure/db/RedisChannelConfigRepository";
 
@@ -24,7 +25,7 @@ describe("E2E: チャンネル設定機能", () => {
 
       // Repository と Service を初期化
       configRepository = new RedisChannelConfigRepository();
-      configService = new ChannelConfigService(configRepository);
+      configService = new ChannelConfigService(configRepository, resolveFallbackPolicies());
     } catch {
       console.warn("[E2E] Skipping tests: Redis is not available");
       redisAvailable = false;
