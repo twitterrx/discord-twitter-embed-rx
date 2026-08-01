@@ -5,6 +5,7 @@ import type { Announcement } from "@rx-twitter/shared";
 import { DASHBOARD_VERSION_FALLBACK, DASHBOARD_VERSION_KEY } from "@rx-twitter/shared";
 import { Client, GatewayIntentBits, Message, Partials, ChannelType } from "discord.js";
 
+import { ComponentsV2Builder } from "@/adapters/discord/ComponentsV2Builder";
 import { DiscordAnnouncementSender } from "@/adapters/discord/DiscordAnnouncementSender";
 import { DiscordEmbedBuilder } from "@/adapters/discord/EmbedBuilder";
 import { MessageHandler } from "@/adapters/discord/MessageHandler";
@@ -116,6 +117,7 @@ const mediaHandler = new MediaHandler(httpClient);
 // Adapter層
 const twitterAdapter = TwitterAdapter.createDefault();
 const embedBuilder = new DiscordEmbedBuilder();
+const componentsV2Builder = new ComponentsV2Builder();
 // Owner Command / Ban System
 const banRepository = new RedisBanRepository();
 const banService = new BanService(banRepository);
@@ -124,6 +126,7 @@ const messageHandler = new MessageHandler(
   tweetProcessor,
   twitterAdapter,
   embedBuilder,
+  componentsV2Builder,
   mediaHandler,
   fileManager,
   videoDownloader,
