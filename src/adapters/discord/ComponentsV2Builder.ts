@@ -32,6 +32,12 @@ export interface ComponentsV2Input {
   attachedFileNames?: string[];
   /** 上限を超えたためリンクで案内する動画URL */
   oversizedVideoUrls?: string[];
+  /**
+   * ギャラリーへ直接埋め込む動画URL
+   *
+   * ダウンロードと添付を伴わないため、アップロード上限の影響を受けない。
+   */
+  videoUrls?: string[];
   /** ネタバレとして伏せるか */
   spoiler?: boolean;
 }
@@ -47,7 +53,7 @@ export class ComponentsV2Builder {
    * ツイートから Container を作成する
    */
   build(input: ComponentsV2Input): ContainerBuilder {
-    const { tweet, attachedFileNames = [], oversizedVideoUrls = [], spoiler = false } = input;
+    const { tweet, attachedFileNames = [], oversizedVideoUrls = [], videoUrls = [], spoiler = false } = input;
 
     // スポイラーは Container 全体へ適用する。MediaGallery / File だけに
     // 立てると、テキストのみのツイートで指定が消える
@@ -60,7 +66,7 @@ export class ComponentsV2Builder {
       container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### :bar_chart: poll\n${poll}`));
     }
 
-    const gallery = this.createGallery(tweet, attachedFileNames, spoiler);
+    const gallery = this.createGallery(tweet, attachedFileNames, videoUrls, spoiler);
     if (gallery) {
       container.addMediaGalleryComponents(gallery);
     }
@@ -122,7 +128,12 @@ export class ComponentsV2Builder {
    * 従来は同一URLの Embed を並べて Discord のギャラリー結合に頼っていたが、
    * v2 では MediaGallery で明示的に表現できる。
    */
-  private createGallery(tweet: Tweet, attachedFileNames: string[], spoiler: boolean): MediaGalleryBuilder | undefined {
+  private createGallery(
+    tweet: Tweet,
+    attachedFileNames: string[],
+    videoUrls: string[],
+    spoiler: boolean
+  ): MediaGalleryBuilder | undefined {
     const urls = tweet.media.filter((m) => m.type === "photo").map((m) => m.thumbnailUrl);
 
     if (tweet.article?.imageUrl) {
@@ -132,6 +143,10 @@ export class ComponentsV2Builder {
     // 動画も同じギャラリーへ入れる。File はファイルカードとして描画され
     // 再生できないため、Container 内で再生させるには MediaGallery を使う。
     urls.push(...attachedFileNames.map((name) => `attachment://${name}`));
+
+    // 外部URLをそのまま渡す経路。ダウンロードもアップロードも伴わないため
+    // 添付上限の影響を受けない。
+    urls.push(...videoUrls);
 
     if (urls.length === 0) {
       return undefined;

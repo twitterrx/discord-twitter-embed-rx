@@ -197,23 +197,38 @@ client.once("clientReady", async () => {
       // v1（従来の Embed）
       await channel.send({ content: "**v1**", embeds: v1.build(p.tweet) });
 
-      // v2（Components v2）。実ツイートの動画は本番同様に添付して確認する
+      const videoUrls = (p.tweet.media ?? []).filter((m) => m.type === "video").map((m) => m.url);
+
+      // 動画がある場合は2方式を並べて比較する。
+      // A: ダウンロードして添付し attachment:// で参照する
+      // B: 元の mp4 URL をそのまま埋め込む（ダウンロード不要・上限の影響なし）
       const { attachments, oversized, cleanup } = await prepareVideos(p.tweet);
       try {
-        const container = v2.build({
-          tweet: p.tweet,
-          spoiler: p.spoiler ?? false,
-          attachedFileNames: attachments.map((a) => a.name),
-          oversizedVideoUrls: [...(p.oversizedVideoUrls ?? []), ...oversized],
-        });
         await channel.send({
           flags: MessageFlags.IsComponentsV2,
-          components: [container],
+          components: [
+            v2.build({
+              tweet: p.tweet,
+              spoiler: p.spoiler ?? false,
+              attachedFileNames: attachments.map((a) => a.name),
+              oversizedVideoUrls: [...(p.oversizedVideoUrls ?? []), ...oversized],
+            }),
+          ],
           files: attachments,
         });
       } finally {
         // 送信の成否にかかわらず一時ファイルを残さない
         await cleanup();
+      }
+
+      if (videoUrls.length > 0) {
+        await channel.send("↑ A: 添付方式（ダウンロード）　↓ B: URL直接埋め込み");
+        await channel.send({
+          flags: MessageFlags.IsComponentsV2,
+          components: [
+            v2.build({ tweet: p.tweet, spoiler: p.spoiler ?? false, videoUrls }),
+          ],
+        });
       }
 
       console.log(`  送信: ${p.name}`);

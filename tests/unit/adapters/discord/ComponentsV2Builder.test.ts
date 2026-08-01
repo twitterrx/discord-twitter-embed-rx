@@ -312,4 +312,40 @@ describe("ComponentsV2Builder", () => {
       expect(JSON.stringify(componentsOf(json, ComponentType.MediaGallery))).toContain('"spoiler":true');
     });
   });
+  describe("動画URLの直接埋め込み", () => {
+    it("外部URLをそのまま MediaGallery に入れる", () => {
+      const json = buildJson({
+        tweet: createMockTweet({ media: [] }),
+        videoUrls: ["https://video.twimg.com/a/b.mp4"],
+      });
+
+      const galleries = componentsOf(json, ComponentType.MediaGallery);
+      expect(galleries).toHaveLength(1);
+      expect(JSON.stringify(galleries[0])).toContain("https://video.twimg.com/a/b.mp4");
+      // ダウンロードを伴わないため attachment:// にはしない
+      expect(JSON.stringify(galleries[0])).not.toContain("attachment://");
+    });
+
+    it("添付と外部URLを併用できる", () => {
+      const json = buildJson({
+        tweet: createMockTweet({ media: [] }),
+        attachedFileNames: ["output1.mp4"],
+        videoUrls: ["https://video.twimg.com/a/b.mp4"],
+      });
+
+      const content = JSON.stringify(componentsOf(json, ComponentType.MediaGallery));
+      expect(content).toContain("attachment://output1.mp4");
+      expect(content).toContain("https://video.twimg.com/a/b.mp4");
+    });
+
+    it("外部URLにも spoiler を適用する", () => {
+      const json = buildJson({
+        tweet: createMockTweet({ media: [] }),
+        videoUrls: ["https://video.twimg.com/a/b.mp4"],
+        spoiler: true,
+      });
+
+      expect(JSON.stringify(componentsOf(json, ComponentType.MediaGallery))).toContain('"spoiler":true');
+    });
+  });
 });
