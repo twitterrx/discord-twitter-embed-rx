@@ -56,11 +56,6 @@ export class ComponentsV2Builder {
 
     this.addHeader(container, tweet);
 
-    const body = truncate(buildTweetBody(tweet), MAX_BODY_LENGTH);
-    if (body !== "") {
-      container.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
-    }
-
     if (tweet.poll && tweet.poll.options.length > 0) {
       const poll = truncate(formatPollOptions(tweet.poll.options), MAX_POLL_LENGTH);
       container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### :bar_chart: poll\n${poll}`));
@@ -104,7 +99,15 @@ export class ComponentsV2Builder {
     // 見出しは記事付きポストのタイトルにのみ使う。
     // 通常のポストで ### を使うと前後に余白が生まれ、本文との間隔が開く。
     const lines = tweet.article?.title ? [`### [${tweet.article.title}](${tweet.url})`, author] : [author];
-    const heading = truncate(lines.join("\n"), MAX_POLL_LENGTH);
+
+    // ヘッダと本文は同じ TextDisplay にまとめる。コンポーネントを分けると
+    // Discord が境界ごとに縦マージンを入れ、本文との間隔が開くため。
+    const body = buildTweetBody(tweet);
+    if (body !== "") {
+      lines.push("", body);
+    }
+
+    const heading = truncate(lines.join("\n"), MAX_BODY_LENGTH);
 
     if (!tweet.author.iconUrl) {
       container.addTextDisplayComponents(new TextDisplayBuilder().setContent(heading));

@@ -35,12 +35,12 @@ describe("ComponentsV2Builder", () => {
     expect(JSON.stringify(sections[0])).toContain(tweet.author.url);
   });
 
-  it("本文とメトリクスを TextDisplay として持つ", () => {
+  it("本文とメトリクスを含む", () => {
     const tweet = createMockTweet({ text: "hello world" });
     const json = buildJson({ tweet });
 
-    const texts = componentsOf(json, ComponentType.TextDisplay);
-    expect(texts.length).toBeGreaterThanOrEqual(2);
+    // 本文はヘッダと同じ Section 内に入るため、Container 直下の
+    // TextDisplay はメトリクスのみになる
     expect(allText(json)).toContain("hello world");
     expect(allText(json)).toContain(String(tweet.metrics.likes));
   });
@@ -226,6 +226,49 @@ describe("ComponentsV2Builder", () => {
 
       expect(allText(json)).toContain(tweet.url);
       expect(allText(json)).toContain("ポストを開く");
+    });
+  });
+  describe("ヘッダと本文の余白", () => {
+    it("ヘッダと本文を1つの TextDisplay にまとめる", () => {
+      const tweet = createMockTweet({ text: "本文テキスト" });
+      const json = buildJson({ tweet });
+
+      // コンポーネント境界ごとに Discord が縦マージンを入れるため、
+      // ヘッダと本文を分けると余白が生まれる
+      const sections = componentsOf(json, ComponentType.Section);
+      const sectionText = JSON.stringify(sections[0]);
+
+      expect(sectionText).toContain("本文テキスト");
+      expect(sectionText).toContain(`@${tweet.author.id}`);
+    });
+
+    it("本文を独立した TextDisplay として持たない", () => {
+      const json = buildJson({ tweet: createMockTweet({ text: "本文テキスト" }) });
+
+      // Container 直下の TextDisplay はメトリクスのみ
+      const texts = componentsOf(json, ComponentType.TextDisplay);
+      expect(texts).toHaveLength(1);
+      expect(JSON.stringify(texts[0])).toContain("ポストを開く");
+    });
+
+    it("アイコンが無い場合もヘッダと本文をまとめる", () => {
+      const tweet = createMockTweet({
+        text: "本文テキスト",
+        author: { ...createMockTweet().author, iconUrl: "" },
+      });
+      const json = buildJson({ tweet });
+
+      const texts = componentsOf(json, ComponentType.TextDisplay);
+      // ヘッダ+本文 と メトリクス の2つ
+      expect(texts).toHaveLength(2);
+      expect(JSON.stringify(texts[0])).toContain("本文テキスト");
+    });
+
+    it("本文が空でもヘッダは表示する", () => {
+      const json = buildJson({ tweet: createMockTweet({ text: "" }) });
+
+      const sections = componentsOf(json, ComponentType.Section);
+      expect(JSON.stringify(sections[0])).toContain("@test_user");
     });
   });
 });
