@@ -111,7 +111,7 @@ logger.info(
 // Core層
 const tweetProcessor = new TweetProcessor();
 const articlePostService = new ArticlePostService(articlePostRepository);
-const mediaHandler = new MediaHandler(httpClient, config.MEDIA_MAX_FILE_SIZE);
+const mediaHandler = new MediaHandler(httpClient);
 
 // Adapter層
 const twitterAdapter = TwitterAdapter.createDefault();
@@ -131,7 +131,8 @@ const messageHandler = new MessageHandler(
   tmpDir,
   channelConfigService,
   banService,
-  articlePostService
+  articlePostService,
+  config.MEDIA_MAX_FILE_SIZE
 );
 
 // === Create discord bot client ===

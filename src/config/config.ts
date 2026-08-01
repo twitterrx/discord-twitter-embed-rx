@@ -21,7 +21,8 @@ export interface LoggingConfig {
 
 // アプリケーション設定の型定義
 export interface AppConfig {
-  MEDIA_MAX_FILE_SIZE: number;
+  /** 添付上限の任意キャップ。未設定時は guild のブーストレベルから決定する */
+  MEDIA_MAX_FILE_SIZE?: number;
   LOGGING: LoggingConfig;
 }
 
@@ -55,7 +56,7 @@ const getLogLevel = (): "debug" | "info" | "warn" | "error" => {
 };
 
 const appConfig: AppConfig = {
-  MEDIA_MAX_FILE_SIZE: config.media_max_file_size || 5242800,
+  MEDIA_MAX_FILE_SIZE: config.media_max_file_size,
   LOGGING: {
     maxFiles: config.logging?.maxFiles || "14d",
     maxSize: config.logging?.maxSize || "20m",
