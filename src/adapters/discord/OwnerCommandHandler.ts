@@ -2,6 +2,7 @@ import type { Client, Message } from "discord.js";
 
 import type { BanEntry } from "@/core/models/BanEntry";
 import { BanService } from "@/core/services/BanService";
+import { ChannelConfigService } from "@/core/services/ChannelConfigService";
 import logger from "@/utils/logger";
 
 /**
@@ -31,7 +32,8 @@ export class OwnerCommandHandler {
   constructor(
     private readonly ownerUserId: string,
     private readonly banService: BanService,
-    private readonly client: Client
+    private readonly client: Client,
+    private readonly channelConfigService: ChannelConfigService
   ) {}
 
   /**
@@ -79,6 +81,9 @@ export class OwnerCommandHandler {
           break;
         case "guilds":
           await this.handleListGuilds(message);
+          break;
+        case "embed-version":
+          await this.handleEmbedVersion(message);
           break;
         case "help":
           await this.sendHelp(message);
@@ -273,11 +278,56 @@ export class OwnerCommandHandler {
   }
 
   /**
+   * !owner/embed-version
+   *
+   * 埋め込み方式（v1 / v2）の使用状況を表示する。
+   * 全体の内訳と、guild ごとの設定状況を一覧で出す。
+   */
+  private async handleEmbedVersion(message: Message): Promise<void> {
+    const guilds = this.client.guilds.cache;
+
+    if (guilds.size === 0) {
+      await message.reply("Bot は現在どのサーバーにも参加していません。");
+      return;
+    }
+
+    // 1 guild の取得失敗で全体が落ちないよう、個別に握って「不明」として扱う
+    const entries = await Promise.all(
+      guilds.map(async (g: { id: string; name: string }) => {
+        try {
+          return { id: g.id, name: g.name, version: await this.channelConfigService.getEmbedVersion(g.id) };
+        } catch (error) {
+          logger.error("[Owner] Failed to get embed version", {
+            guildId: g.id,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return { id: g.id, name: g.name, version: "不明" as const };
+        }
+      })
+    );
+
+    const count = (v: string) => entries.filter((e) => e.version === v).length;
+    const header = [
+      `**埋め込み方式の使用状況 (${entries.length}件)**`,
+      `v2: ${count("v2")} / v1: ${count("v1")}` + (count("不明") > 0 ? ` / 不明: ${count("不明")}` : ""),
+      "",
+    ].join("\n");
+
+    const lines = entries.map((e) => `\`${e.id}\` — ${e.name} → **${e.version}**`);
+
+    const chunks = this.chunkText(header + lines.join("\n"), 1900);
+    for (const chunk of chunks) {
+      await message.reply(chunk);
+    }
+  }
+
+  /**
    * !owner/help
    */
   private async sendHelp(message: Message): Promise<void> {
     const helpText = [
       "**Owner コマンド一覧**",
+      "`!owner/embed-version` — 埋め込み方式(v1/v2)の使用状況を表示",
       "",
       "`!owner/ban <userId> [reason]`",
       "  ユーザーを BAN します。BAN されたユーザーからの投稿は Bot が無視します。",

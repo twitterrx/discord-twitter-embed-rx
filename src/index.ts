@@ -152,7 +152,7 @@ const client = new Client({
 });
 
 // Owner Command Handler
-const ownerCommandHandler = new OwnerCommandHandler(ownerUserId, banService, client);
+const ownerCommandHandler = new OwnerCommandHandler(ownerUserId, banService, client, channelConfigService);
 
 // お知らせ配信（#425 Phase1）
 // ownerUserId は起動時ガードで存在保証済みだが、クロージャ内で型が広がるため const で固定する

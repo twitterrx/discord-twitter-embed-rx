@@ -6,6 +6,7 @@ vi.mock("@/utils/logger", () => ({
 
 import type { Message } from "discord.js";
 import { OwnerCommandHandler } from "@/adapters/discord/OwnerCommandHandler";
+import type { ChannelConfigService } from "@/core/services/ChannelConfigService";
 import { BanService } from "@/core/services/BanService";
 
 // Collection ライクな Map（.map() / .filter() / .size を生やす）
@@ -60,6 +61,7 @@ const createMockMessage = (overrides: Record<string, unknown> = {}): Message<boo
 describe("OwnerCommandHandler", () => {
   let mockBanService: BanService;
   let mockClient: MockClient;
+  let mockChannelConfigService: ChannelConfigService;
   let handler: OwnerCommandHandler;
 
   const OWNER_ID = "owner-id";
@@ -79,10 +81,14 @@ describe("OwnerCommandHandler", () => {
     } as unknown as BanService;
 
     mockClient = createMockClient();
+    mockChannelConfigService = {
+      getEmbedVersion: vi.fn().mockResolvedValue("v2"),
+    } as unknown as ChannelConfigService;
     handler = new OwnerCommandHandler(
       OWNER_ID,
       mockBanService,
       mockClient as unknown as ConstructorParameters<typeof OwnerCommandHandler>[2],
+      mockChannelConfigService,
     );
   });
 
@@ -365,6 +371,79 @@ describe("OwnerCommandHandler", () => {
       const result = await handler.handleMessage(msg);
       expect(result).toBe(true);
       expect(msg.reply).toHaveBeenCalledWith(expect.stringContaining("Redis connection failed"));
+    });
+  });
+  describe("!owner/embed-version (v1/v2 の使用状況)", () => {
+    const addGuild = (id: string, name: string) =>
+      mockClient.guilds.cache.set(id, { id, name, memberCount: 1 } as never);
+
+    const run = async () => {
+      const message = createMockMessage({ content: "!owner/embed-version" });
+      await handler.handleMessage(message);
+      return vi.mocked(message.reply).mock.calls.map((c) => String(c[0])).join("\n");
+    };
+
+    it("参加サーバーが無い場合はその旨を返す", async () => {
+      const text = await run();
+
+      expect(text).toContain("参加していません");
+    });
+
+    it("全体の内訳を集計して表示する", async () => {
+      addGuild("g1", "Alpha");
+      addGuild("g2", "Bravo");
+      addGuild("g3", "Charlie");
+      vi.mocked(mockChannelConfigService.getEmbedVersion)
+        .mockResolvedValueOnce("v2")
+        .mockResolvedValueOnce("v1")
+        .mockResolvedValueOnce("v2");
+
+      const text = await run();
+
+      expect(text).toContain("v2: 2");
+      expect(text).toContain("v1: 1");
+    });
+
+    it("guild ごとの設定状況を一覧で表示する", async () => {
+      addGuild("g1", "Alpha");
+      addGuild("g2", "Bravo");
+      vi.mocked(mockChannelConfigService.getEmbedVersion)
+        .mockResolvedValueOnce("v1")
+        .mockResolvedValueOnce("v2");
+
+      const text = await run();
+
+      expect(text).toContain("Alpha");
+      expect(text).toContain("Bravo");
+      expect(text).toContain("g1");
+      expect(text).toContain("g2");
+    });
+
+    it("件数が多い場合はチャンクに分けて送信する", async () => {
+      for (let i = 0; i < 120; i++) {
+        addGuild(`guild-${i}`, `とても長いサーバー名を持つテストギルド ${i}`);
+      }
+
+      const message = createMockMessage({ content: "!owner/embed-version" });
+      await handler.handleMessage(message);
+
+      expect(vi.mocked(message.reply).mock.calls.length).toBeGreaterThan(1);
+      for (const call of vi.mocked(message.reply).mock.calls) {
+        expect(String(call[0]).length).toBeLessThanOrEqual(2000);
+      }
+    });
+
+    it("設定の取得に失敗した guild があっても他を表示する", async () => {
+      addGuild("g1", "Alpha");
+      addGuild("g2", "Bravo");
+      vi.mocked(mockChannelConfigService.getEmbedVersion)
+        .mockRejectedValueOnce(new Error("redis down"))
+        .mockResolvedValueOnce("v2");
+
+      const text = await run();
+
+      expect(text).toContain("Bravo");
+      expect(text).toContain("不明");
     });
   });
 });
