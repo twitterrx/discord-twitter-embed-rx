@@ -1,5 +1,28 @@
 # Changelog
 
+## [2.8.0](https://github.com/rx-twitter/rx-twitter/compare/v2.7.0...v2.8.0) (2026-08-01)
+
+
+### Features
+
+* **codex:** GitHub PRレビュースキルを追加 ([8940efd](https://github.com/rx-twitter/rx-twitter/commit/8940efdb7fd3cdc60c7bc3c0a83c98d3041779ab))
+* **codex:** GitHub PRレビュースキルを追加 ([c90e05c](https://github.com/rx-twitter/rx-twitter/commit/c90e05c431ed54d1a93e404ce130f0ae4ec600f0))
+
+
+### Bug Fixes
+
+* **config:** フォールバック既定を allow に統一しドキュメントと一致させる ([250bd6f](https://github.com/rx-twitter/rx-twitter/commit/250bd6f565ce07a6d72154798990975115794cac))
+* **config:** フォールバック既定を allow に統一し誤設定を警告する ([6bf60aa](https://github.com/rx-twitter/rx-twitter/commit/6bf60aa63e7b3b3e810403ef92771fa3b13a4468)), closes [#549](https://github.com/rx-twitter/rx-twitter/issues/549)
+* **discord:** spoiler ボタンの待ち受けを collector に置き換えリスナーリークを解消 ([25dfd2b](https://github.com/rx-twitter/rx-twitter/commit/25dfd2b13e0c6b8f44a288220b22879c824fc0fc))
+* **discord:** spoiler ボタンの待ち受けを collector に置き換える ([82748d7](https://github.com/rx-twitter/rx-twitter/commit/82748d7c51a418be430fc1a2e6fc7c787f4c9148)), closes [#550](https://github.com/rx-twitter/rx-twitter/issues/550)
+* **fxtwitter:** API の返り値を入力型から出力型に正す ([77ede6c](https://github.com/rx-twitter/rx-twitter/commit/77ede6c3e48eb73b412f3469ecc69914d218b8a5)), closes [#559](https://github.com/rx-twitter/rx-twitter/issues/559)
+* **fxtwitter:** 型ガードで Twitter 以外の status を弾き、弾いた理由をログに残す ([5cc291f](https://github.com/rx-twitter/rx-twitter/commit/5cc291f5cb8b43b2dbe86e3a6fd81f0f2a8aa0c6))
+* **fxtwitter:** 型ガードで Twitter 以外の status を弾く ([2a39df5](https://github.com/rx-twitter/rx-twitter/commit/2a39df51cf43ffb4d98d2f3c247a920629838092)), closes [#563](https://github.com/rx-twitter/rx-twitter/issues/563)
+* **http:** 同期 throw でタイマーが残りプロセスが落ちる問題を修正 ([6fbd646](https://github.com/rx-twitter/rx-twitter/commit/6fbd646c49abd1d0e90f32da9319480a7bbcf182)), closes [#575](https://github.com/rx-twitter/rx-twitter/issues/575)
+* **http:** 成功したリクエストのタイマーを解除し幽霊 ERROR ログを止める ([d68800f](https://github.com/rx-twitter/rx-twitter/commit/d68800fdd6ac445f757891f8a8ab36d2ed90fbdc))
+* **http:** 成功したリクエストのタイマーを解除し幽霊 ERROR を止める ([a774c5c](https://github.com/rx-twitter/rx-twitter/commit/a774c5c630bbb20be1ed3858cac15ead942481a4)), closes [#575](https://github.com/rx-twitter/rx-twitter/issues/575)
+* **logging:** JSON以外のレスポンスをwarnで記録しスタックトレースを外す ([#566](https://github.com/rx-twitter/rx-twitter/issues/566)) ([99dbdab](https://github.com/rx-twitter/rx-twitter/commit/99dbdab998a5e28156beba471e071c0aa8e6ad2a))
+
 ## [2.7.0](https://github.com/rx-twitter/rx-twitter/compare/v2.6.0...v2.7.0) (2026-07-30)
 
 
