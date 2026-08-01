@@ -627,7 +627,7 @@ describe("MessageHandler", () => {
       expect(replyMessage.createMessageComponentCollector).not.toHaveBeenCalled();
     });
   });
-  describe("handleMessage - 動画のダウンロード失敗", () => {
+  describe("handleMessage - v1 のダウンロード失敗", () => {
     it("失敗した動画は URL としてリンクに回す", async () => {
       const replyMessage = createMockReplyMessage();
       const message = createMockMessage({
@@ -636,9 +636,14 @@ describe("MessageHandler", () => {
       });
       const video = { url: "https://v.test/1.mp4", thumbnailUrl: "https://v.test/1.jpg", type: "video" as const };
 
+      // 失敗フォールバックは v1 のスポイラー展開経路にある。
+      // v2 は URL を直接埋め込むためダウンロードしない。
+      vi.mocked(processor.categorizeBySpoiler).mockReturnValue({
+        normal: [],
+        spoiler: ["https://x.com/user/status/123456789"],
+      });
       vi.mocked(twitterAdapter.fetchTweet).mockResolvedValue(createMockTweet({ media: [video] }));
       vi.mocked(mediaHandler.filterBySize).mockResolvedValue({ downloadable: [video], tooLarge: [] });
-      // ダウンロード自体が失敗する
       vi.mocked(videoDownloader.download).mockRejectedValue(new Error("network error"));
 
       const h = new MessageHandler(
@@ -654,7 +659,7 @@ describe("MessageHandler", () => {
         {
           isChannelAllowed: vi.fn().mockResolvedValue(true),
           getMaxUrlsPerMessage: vi.fn().mockResolvedValue(3),
-          getEmbedVersion: vi.fn().mockResolvedValue("v2"),
+          getEmbedVersion: vi.fn().mockResolvedValue("v1"),
         } as unknown as ChannelConfigService,
         undefined,
         articlePostService,
@@ -662,11 +667,17 @@ describe("MessageHandler", () => {
 
       await h.handleMessage(createMockClient(), message);
 
+      const interaction = createMockButtonInteraction();
+      await replyMessage.emit("collect", interaction);
+
+      // 対象経路を実際に通っていること
+      expect(videoDownloader.download).toHaveBeenCalled();
       // 添付にもリンクにも現れず消える、という状態にしない
-      const payload = vi.mocked(message.reply).mock.calls[0][0] as Record<string, unknown>;
-      expect(JSON.stringify(payload.components)).toContain(video.url);
+      const editArg = vi.mocked(interaction.editReply).mock.calls[0][0] as Record<string, unknown>;
+      expect(String(editArg.content)).toContain(video.url);
     });
   });
+
   describe("handleMessage - v2 は動画をダウンロードしない", () => {
     const setup = () => {
       const replyMessage = createMockReplyMessage();
