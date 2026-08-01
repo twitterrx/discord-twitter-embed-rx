@@ -25,6 +25,7 @@ import { TweetProcessor } from "@/core/services/TweetProcessor";
 import { IReplyLogger } from "@/db/replyLogger";
 import logger from "@/utils/logger";
 
+import { resolveAttachmentLimit } from "./attachmentLimit";
 import { DiscordEmbedBuilder } from "./EmbedBuilder";
 
 /**
@@ -70,7 +71,9 @@ export class MessageHandler {
     private readonly tmpDirBase: string,
     private readonly channelConfigService?: ChannelConfigService,
     private readonly banService?: BanService,
-    private readonly articlePostService?: ArticlePostService
+    private readonly articlePostService?: ArticlePostService,
+    /** 運用側が設定した添付上限のキャップ。未指定なら guild のブーストレベルのみで決まる */
+    private readonly mediaSizeCap?: number
   ) {}
 
   /**
@@ -378,7 +381,7 @@ export class MessageHandler {
 
       try {
         // 動画をダウンロードしてエフェメラルで送信
-        const { attachments, largeVideoUrls } = await this.downloadMediaForSpoiler(tweet);
+        const { attachments, largeVideoUrls } = await this.downloadMediaForSpoiler(tweet, message.guild);
 
         // 大きすぎるファイルのURLをcontentに含める
         const content =
@@ -428,9 +431,11 @@ export class MessageHandler {
    * @returns AttachmentBuilder配列と大きすぎるファイルのURL配列
    */
   private async downloadMediaForSpoiler(
-    tweet: Tweet
+    tweet: Tweet,
+    guild: Message["guild"]
   ): Promise<{ attachments: AttachmentBuilder[]; largeVideoUrls: string[] }> {
     const uniqueTmpDir = path.join(this.tmpDirBase, randomUUID());
+    const maxFileSize = resolveAttachmentLimit(guild, this.mediaSizeCap);
     const attachments: AttachmentBuilder[] = [];
 
     try {
@@ -438,7 +443,7 @@ export class MessageHandler {
 
       // 動画のみファイルサイズでフィルタリング（画像はEmbedのサムネイルでのみ使用するためチェック不要）
       const allVideos = this.mediaHandler.filterVideos(tweet.media);
-      const { downloadable, tooLarge } = await this.mediaHandler.filterBySize(allVideos);
+      const { downloadable, tooLarge } = await this.mediaHandler.filterBySize(allVideos, maxFileSize);
 
       // ダウンロード可能な動画を処理
       await this.downloadVideos(downloadable, uniqueTmpDir);
@@ -479,6 +484,7 @@ export class MessageHandler {
    */
   private async handleMedia(message: Message, tweet: Tweet, isSpoiler: boolean): Promise<string[]> {
     const uniqueTmpDir = path.join(this.tmpDirBase, randomUUID());
+    const maxFileSize = resolveAttachmentLimit(message.guild, this.mediaSizeCap);
     const messageIds: string[] = [];
 
     try {
@@ -487,7 +493,7 @@ export class MessageHandler {
 
       // 動画のみファイルサイズでフィルタリング（画像はEmbedのサムネイルでのみ使用するためチェック不要）
       const allVideos = this.mediaHandler.filterVideos(tweet.media);
-      const { downloadable, tooLarge } = await this.mediaHandler.filterBySize(allVideos);
+      const { downloadable, tooLarge } = await this.mediaHandler.filterBySize(allVideos, maxFileSize);
 
       // ダウンロード可能な動画を処理
       await this.downloadVideos(downloadable, uniqueTmpDir);

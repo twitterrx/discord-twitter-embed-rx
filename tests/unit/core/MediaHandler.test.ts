@@ -12,7 +12,22 @@ describe("MediaHandler", () => {
     mockFileSizeChecker = {
       getFileSize: vi.fn(),
     };
-    mediaHandler = new MediaHandler(mockFileSizeChecker, MAX_FILE_SIZE);
+    mediaHandler = new MediaHandler(mockFileSizeChecker);
+  });
+
+  describe("filterBySize - 上限は呼び出しごとに決まる", () => {
+    it("同じメディアでも渡した上限によって振り分けが変わる", async () => {
+      const media = [{ url: "https://example.test/v.mp4", thumbnailUrl: "", type: "video" as const }];
+      vi.mocked(mockFileSizeChecker.getFileSize).mockResolvedValue(30 * 1024 * 1024);
+
+      const strict = await mediaHandler.filterBySize(media, 25 * 1024 * 1024);
+      const relaxed = await mediaHandler.filterBySize(media, 50 * 1024 * 1024);
+
+      expect(strict.tooLarge).toHaveLength(1);
+      expect(strict.downloadable).toHaveLength(0);
+      expect(relaxed.downloadable).toHaveLength(1);
+      expect(relaxed.tooLarge).toHaveLength(0);
+    });
   });
 
   describe("filterBySize", () => {
@@ -26,7 +41,7 @@ describe("MediaHandler", () => {
         .mockResolvedValueOnce(3 * 1024 * 1024) // 3MB
         .mockResolvedValueOnce(1 * 1024 * 1024); // 1MB
 
-      const result = await mediaHandler.filterBySize(media);
+      const result = await mediaHandler.filterBySize(media, MAX_FILE_SIZE);
 
       expect(result.downloadable).toHaveLength(2);
       expect(result.tooLarge).toHaveLength(0);
@@ -43,7 +58,7 @@ describe("MediaHandler", () => {
         .mockResolvedValueOnce(6 * 1024 * 1024) // 6MB
         .mockResolvedValueOnce(10 * 1024 * 1024); // 10MB
 
-      const result = await mediaHandler.filterBySize(media);
+      const result = await mediaHandler.filterBySize(media, MAX_FILE_SIZE);
 
       expect(result.downloadable).toHaveLength(0);
       expect(result.tooLarge).toHaveLength(2);
@@ -62,7 +77,7 @@ describe("MediaHandler", () => {
         .mockResolvedValueOnce(7 * 1024 * 1024) // 7MB
         .mockResolvedValueOnce(5 * 1024 * 1024); // 5MB (境界値)
 
-      const result = await mediaHandler.filterBySize(media);
+      const result = await mediaHandler.filterBySize(media, MAX_FILE_SIZE);
 
       expect(result.downloadable).toHaveLength(2);
       expect(result.tooLarge).toHaveLength(1);
@@ -76,14 +91,14 @@ describe("MediaHandler", () => {
 
       vi.mocked(mockFileSizeChecker.getFileSize).mockRejectedValueOnce(new Error("Network error"));
 
-      const result = await mediaHandler.filterBySize(media);
+      const result = await mediaHandler.filterBySize(media, MAX_FILE_SIZE);
 
       expect(result.downloadable).toHaveLength(0);
       expect(result.tooLarge).toHaveLength(1);
     });
 
     it("空の配列を渡した場合、空の結果を返す", async () => {
-      const result = await mediaHandler.filterBySize([]);
+      const result = await mediaHandler.filterBySize([], MAX_FILE_SIZE);
 
       expect(result.downloadable).toEqual([]);
       expect(result.tooLarge).toEqual([]);

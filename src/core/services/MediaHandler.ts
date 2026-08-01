@@ -14,17 +14,19 @@ export interface IFileSizeChecker {
  * メディア処理に関するビジネスロジックを集約
  */
 export class MediaHandler {
-  constructor(
-    private readonly fileSizeChecker: IFileSizeChecker,
-    private readonly maxFileSize: number
-  ) {}
+  constructor(private readonly fileSizeChecker: IFileSizeChecker) {}
 
   /**
    * メディアをファイルサイズでフィルタリング
+   *
+   * 上限は guild のブーストレベルによって変わるため、呼び出し側が都度渡す。
+   * Core は discord.js を知らないまま、数値としての上限だけを扱う。
+   *
    * @param media メディア配列
+   * @param maxFileSize 添付可能な最大バイト数
    * @returns ダウンロード可能なものと大きすぎるものに分けた結果
    */
-  async filterBySize(media: TweetMedia[]): Promise<MediaFilterResult> {
+  async filterBySize(media: TweetMedia[], maxFileSize: number): Promise<MediaFilterResult> {
     const results = await Promise.all(
       media.map(async (item) => {
         try {
@@ -40,9 +42,9 @@ export class MediaHandler {
       })
     );
 
-    const downloadable = results.filter((r) => r.size <= this.maxFileSize && r.error === null).map((r) => r.media);
+    const downloadable = results.filter((r) => r.size <= maxFileSize && r.error === null).map((r) => r.media);
 
-    const tooLarge = results.filter((r) => r.size > this.maxFileSize || r.error !== null).map((r) => r.media);
+    const tooLarge = results.filter((r) => r.size > maxFileSize || r.error !== null).map((r) => r.media);
 
     return { downloadable, tooLarge };
   }
