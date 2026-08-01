@@ -323,4 +323,35 @@ describe("DiscordEmbedBuilder", () => {
       expect(embedData.description).toContain("＠[`@test`](https://x.com/test)");
     });
   });
+  describe("著者アイコンが無い場合", () => {
+    // FxTwitter の avatar_url は nullable で、FxTwitterAdapter が空文字へ変換するため到達しうる
+    const noIcon = () => createMockTweet({ author: { ...createMockTweet().author, iconUrl: "" } });
+
+    it("例外を投げずに Embed を生成できる", () => {
+      // setAuthor の iconURL は「未指定」か「有効なURL」のみを受け付ける。
+      // 空文字を渡すと ValidationError と Invalid URL の両方で弾かれる
+      expect(() => builder.build(noIcon())).not.toThrow();
+    });
+
+    it("著者名とリンクは失われない", () => {
+      const [embed] = builder.build(noIcon());
+      const json = embed.toJSON();
+
+      expect(json.author?.name).toBe(noIcon().author.name);
+      expect(json.author?.url).toBe(noIcon().author.url);
+    });
+
+    it("iconURL を渡さない", () => {
+      const [embed] = builder.build(noIcon());
+
+      expect(embed.toJSON().author?.icon_url).toBeUndefined();
+    });
+
+    it("アイコンがあれば従来どおり設定する", () => {
+      const tweet = createMockTweet();
+      const [embed] = builder.build(tweet);
+
+      expect(embed.toJSON().author?.icon_url).toBe(tweet.author.iconUrl);
+    });
+  });
 });

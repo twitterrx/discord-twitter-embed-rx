@@ -42,10 +42,13 @@ export class DiscordEmbedBuilder {
    */
   private createSingleEmbed(tweet: Tweet): EmbedBuilder {
     const embed = new EmbedBuilder()
+      // iconURL は「未指定」か「有効なURL」のみを受け付ける。
+      // 空文字を渡すと例外になるため、無い場合はキー自体を含めない。
+      // FxTwitter の avatar_url は nullable で、Adapter が空文字へ変換するため到達しうる。
       .setAuthor({
         name: tweet.author.name,
         url: tweet.author.url,
-        iconURL: tweet.author.iconUrl,
+        ...(tweet.author.iconUrl ? { iconURL: tweet.author.iconUrl } : {}),
       })
       .setTitle(this.truncateTitle(tweet.article?.title ?? tweet.author.name))
       .setURL(tweet.url)
