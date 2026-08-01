@@ -361,24 +361,17 @@ export class MessageHandler {
    * スポイラーは Container のぼかしで表現するため、ボタンと collector も使わない。
    */
   private async sendComponentsV2Message(message: Message, tweet: Tweet, isSpoiler: boolean): Promise<void> {
-    // 動画が無ければ一時ディレクトリの作成もダウンロードも不要
-    const hasVideo = this.mediaHandler.filterVideos(tweet.media).length > 0;
-    const { attachments, largeVideoUrls } = hasVideo
-      ? await this.downloadVideoAttachments(tweet, message.guild)
-      : { attachments: [], largeVideoUrls: [] };
+    // 動画は元の URL をそのままギャラリーへ埋め込む。
+    // ダウンロードも添付も行わないため、アップロード上限の影響を受けず、
+    // 一時ディレクトリの作成と後始末も不要になる。
+    const videoUrls = this.mediaHandler.filterVideos(tweet.media).map((v) => v.url);
 
-    const container = this.componentsV2Builder.build({
-      tweet,
-      attachedFileNames: attachments.map((a) => a.name).filter((name): name is string => Boolean(name)),
-      oversizedVideoUrls: largeVideoUrls,
-      spoiler: isSpoiler,
-    });
+    const container = this.componentsV2Builder.build({ tweet, videoUrls, spoiler: isSpoiler });
 
     // IsComponentsV2 を立てたメッセージでは content も embeds も使えない
     const replyMessage = await message.reply({
       flags: MessageFlags.IsComponentsV2,
       components: [container],
-      files: attachments,
       allowedMentions: { repliedUser: false },
     });
 
@@ -474,9 +467,14 @@ export class MessageHandler {
 
   /**
    * 動画をダウンロードして AttachmentBuilder を作成する
-   * v1 のスポイラー展開と v2 の Container 添付の両方で使う
+   *
+   * v1 のスポイラー展開からのみ呼ばれる。v2 は元の URL を MediaGallery へ
+   * 直接埋め込むため、ダウンロードも添付も行わない。
+   *
    * @param tweet ツイートデータ
-   * @returns AttachmentBuilder配列と大きすぎるファイルのURL配列
+   * @param guild 添付上限の算出に用いるギルド（DM など guild 外では null）
+   * @returns AttachmentBuilder配列と、添付できなかった動画のURL配列
+   *          （上限超過とダウンロード失敗の両方を含む）
    */
   private async downloadVideoAttachments(
     tweet: Tweet,

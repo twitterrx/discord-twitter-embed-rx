@@ -3,7 +3,6 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ContainerBuilder,
-  FileBuilder,
   MediaGalleryBuilder,
   MediaGalleryItemBuilder,
   SectionBuilder,
@@ -29,10 +28,14 @@ const MAX_GALLERY_ITEMS = 10;
 
 export interface ComponentsV2Input {
   tweet: Tweet;
-  /** 添付済み動画のファイル名（Container 内で attachment:// として参照する） */
-  attachedFileNames?: string[];
   /** 上限を超えたためリンクで案内する動画URL */
   oversizedVideoUrls?: string[];
+  /**
+   * ギャラリーへ直接埋め込む動画URL
+   *
+   * ダウンロードと添付を伴わないため、アップロード上限の影響を受けない。
+   */
+  videoUrls?: string[];
   /** ネタバレとして伏せるか */
   spoiler?: boolean;
 }
@@ -48,7 +51,7 @@ export class ComponentsV2Builder {
    * ツイートから Container を作成する
    */
   build(input: ComponentsV2Input): ContainerBuilder {
-    const { tweet, attachedFileNames = [], oversizedVideoUrls = [], spoiler = false } = input;
+    const { tweet, oversizedVideoUrls = [], videoUrls = [], spoiler = false } = input;
 
     // スポイラーは Container 全体へ適用する。MediaGallery / File だけに
     // 立てると、テキストのみのツイートで指定が消える
@@ -56,23 +59,14 @@ export class ComponentsV2Builder {
 
     this.addHeader(container, tweet);
 
-    const body = truncate(buildTweetBody(tweet), MAX_BODY_LENGTH);
-    if (body !== "") {
-      container.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
-    }
-
     if (tweet.poll && tweet.poll.options.length > 0) {
       const poll = truncate(formatPollOptions(tweet.poll.options), MAX_POLL_LENGTH);
       container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### :bar_chart: poll\n${poll}`));
     }
 
-    const gallery = this.createGallery(tweet, spoiler);
+    const gallery = this.createGallery(tweet, videoUrls, spoiler);
     if (gallery) {
       container.addMediaGalleryComponents(gallery);
-    }
-
-    for (const fileName of attachedFileNames) {
-      container.addFileComponents(new FileBuilder().setURL(`attachment://${fileName}`).setSpoiler(spoiler));
     }
 
     const linkRow = this.createOversizedVideoRow(oversizedVideoUrls);
@@ -95,11 +89,24 @@ export class ComponentsV2Builder {
    * FxTwitter の avatar_url は nullable で、Adapter が空文字へ変換するため到達しうる。
    */
   private addHeader(container: ContainerBuilder, tweet: Tweet): void {
-    const title = tweet.article?.title ?? tweet.author.name;
-    const heading = truncate(
-      `### [${title}](${tweet.url})\n[${tweet.author.name}](${tweet.author.url})`,
-      MAX_POLL_LENGTH
-    );
+    // 表示名と handle を分ける。author.name は "表示名(@handle)" 形式のため
+    // そのまま使うとアカウント行とポスト行が同じ文字列になり、リンク先の違いが
+    // 見た目で判別できない。
+    const displayName = tweet.author.name.replace(/\(@[^)]+\)$/, "");
+    const author = `**${displayName}** [@${tweet.author.id}](${tweet.author.url})`;
+
+    // 見出しは記事付きポストのタイトルにのみ使う。
+    // 通常のポストで ### を使うと前後に余白が生まれ、本文との間隔が開く。
+    const lines = tweet.article?.title ? [`### [${tweet.article.title}](${tweet.url})`, author] : [author];
+
+    // ヘッダと本文は同じ TextDisplay にまとめる。コンポーネントを分けると
+    // Discord が境界ごとに縦マージンを入れ、本文との間隔が開くため。
+    const body = buildTweetBody(tweet);
+    if (body !== "") {
+      lines.push("", body);
+    }
+
+    const heading = truncate(lines.join("\n"), MAX_BODY_LENGTH);
 
     if (!tweet.author.iconUrl) {
       container.addTextDisplayComponents(new TextDisplayBuilder().setContent(heading));
@@ -119,12 +126,17 @@ export class ComponentsV2Builder {
    * 従来は同一URLの Embed を並べて Discord のギャラリー結合に頼っていたが、
    * v2 では MediaGallery で明示的に表現できる。
    */
-  private createGallery(tweet: Tweet, spoiler: boolean): MediaGalleryBuilder | undefined {
+  private createGallery(tweet: Tweet, videoUrls: string[], spoiler: boolean): MediaGalleryBuilder | undefined {
     const urls = tweet.media.filter((m) => m.type === "photo").map((m) => m.thumbnailUrl);
 
     if (tweet.article?.imageUrl) {
       urls.unshift(tweet.article.imageUrl);
     }
+
+    // 動画も同じギャラリーへ入れる。File はファイルカードとして描画され
+    // 再生できないため、Container 内で再生させるには MediaGallery を使う。
+    // URL をそのまま渡せるため、ダウンロードも添付上限の判定も不要。
+    urls.push(...videoUrls);
 
     if (urls.length === 0) {
       return undefined;
@@ -160,11 +172,14 @@ export class ComponentsV2Builder {
    */
   private createMetrics(tweet: Tweet): string {
     const unixSeconds = Math.floor(tweet.timestamp.getTime() / 1000);
+    // ポストへのリンクはここに置く。ヘッダのアカウントリンクと役割が
+    // 見た目で区別できるよう、文言で何へ飛ぶかを示す。
     return [
       `:arrow_right_hook: ${tweet.metrics.replies}`,
       `:hearts: ${tweet.metrics.likes}`,
       `:arrows_counterclockwise: ${tweet.metrics.retweets}`,
       `<t:${unixSeconds}:f>`,
+      `[ポストを開く](${tweet.url})`,
     ].join("　");
   }
 }

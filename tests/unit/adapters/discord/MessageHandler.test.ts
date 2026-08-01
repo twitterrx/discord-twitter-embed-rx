@@ -627,7 +627,7 @@ describe("MessageHandler", () => {
       expect(replyMessage.createMessageComponentCollector).not.toHaveBeenCalled();
     });
   });
-  describe("handleMessage - 動画のダウンロード失敗", () => {
+  describe("handleMessage - v1 のダウンロード失敗", () => {
     it("失敗した動画は URL としてリンクに回す", async () => {
       const replyMessage = createMockReplyMessage();
       const message = createMockMessage({
@@ -636,10 +636,57 @@ describe("MessageHandler", () => {
       });
       const video = { url: "https://v.test/1.mp4", thumbnailUrl: "https://v.test/1.jpg", type: "video" as const };
 
+      // 失敗フォールバックは v1 のスポイラー展開経路にある。
+      // v2 は URL を直接埋め込むためダウンロードしない。
+      vi.mocked(processor.categorizeBySpoiler).mockReturnValue({
+        normal: [],
+        spoiler: ["https://x.com/user/status/123456789"],
+      });
       vi.mocked(twitterAdapter.fetchTweet).mockResolvedValue(createMockTweet({ media: [video] }));
       vi.mocked(mediaHandler.filterBySize).mockResolvedValue({ downloadable: [video], tooLarge: [] });
-      // ダウンロード自体が失敗する
       vi.mocked(videoDownloader.download).mockRejectedValue(new Error("network error"));
+
+      const h = new MessageHandler(
+        processor,
+        twitterAdapter,
+        embedBuilder,
+        componentsV2Builder,
+        mediaHandler,
+        fileManager,
+        videoDownloader,
+        replyLogger,
+        "/tmp",
+        {
+          isChannelAllowed: vi.fn().mockResolvedValue(true),
+          getMaxUrlsPerMessage: vi.fn().mockResolvedValue(3),
+          getEmbedVersion: vi.fn().mockResolvedValue("v1"),
+        } as unknown as ChannelConfigService,
+        undefined,
+        articlePostService,
+      );
+
+      await h.handleMessage(createMockClient(), message);
+
+      const interaction = createMockButtonInteraction();
+      await replyMessage.emit("collect", interaction);
+
+      // 対象経路を実際に通っていること
+      expect(videoDownloader.download).toHaveBeenCalled();
+      // 添付にもリンクにも現れず消える、という状態にしない
+      const editArg = vi.mocked(interaction.editReply).mock.calls[0][0] as Record<string, unknown>;
+      expect(String(editArg.content)).toContain(video.url);
+    });
+  });
+
+  describe("handleMessage - v2 は動画をダウンロードしない", () => {
+    const setup = () => {
+      const replyMessage = createMockReplyMessage();
+      const message = createMockMessage({
+        reply: vi.fn().mockResolvedValue(replyMessage),
+        guild: { premiumTier: 0 },
+      });
+      const video = { url: "https://video.twimg.com/a/b.mp4", thumbnailUrl: "https://v/t.jpg", type: "video" as const };
+      vi.mocked(twitterAdapter.fetchTweet).mockResolvedValue(createMockTweet({ media: [video] }));
 
       const h = new MessageHandler(
         processor,
@@ -660,11 +707,42 @@ describe("MessageHandler", () => {
         articlePostService,
       );
 
+      return { handler: h, message, video };
+    };
+
+    it("動画URLを直接埋め込む", async () => {
+      const { handler: h, message, video } = setup();
+
       await h.handleMessage(createMockClient(), message);
 
-      // 添付にもリンクにも現れず消える、という状態にしない
       const payload = vi.mocked(message.reply).mock.calls[0][0] as Record<string, unknown>;
       expect(JSON.stringify(payload.components)).toContain(video.url);
+    });
+
+    it("ダウンロードも一時ディレクトリ作成も行わない", async () => {
+      const { handler: h, message } = setup();
+
+      await h.handleMessage(createMockClient(), message);
+
+      expect(videoDownloader.download).not.toHaveBeenCalled();
+      expect(fileManager.createDirectory).not.toHaveBeenCalled();
+    });
+
+    it("添付ファイルを伴わない", async () => {
+      const { handler: h, message } = setup();
+
+      await h.handleMessage(createMockClient(), message);
+
+      const payload = vi.mocked(message.reply).mock.calls[0][0] as Record<string, unknown>;
+      expect(payload.files ?? []).toHaveLength(0);
+    });
+
+    it("サイズ判定を行わない（上限の影響を受けない）", async () => {
+      const { handler: h, message } = setup();
+
+      await h.handleMessage(createMockClient(), message);
+
+      expect(mediaHandler.filterBySize).not.toHaveBeenCalled();
     });
   });
 });

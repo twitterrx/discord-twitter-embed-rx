@@ -28,16 +28,19 @@ describe("ComponentsV2Builder", () => {
 
     const sections = componentsOf(json, ComponentType.Section);
     expect(sections).toHaveLength(1);
-    expect(JSON.stringify(sections[0])).toContain(tweet.author.name);
-    expect(JSON.stringify(sections[0])).toContain(tweet.url);
+    // author.name は "表示名(@handle)" 形式。ヘッダでは分割して表示する
+    const displayName = tweet.author.name.replace(/\(@[^)]+\)$/, "");
+    expect(JSON.stringify(sections[0])).toContain(displayName);
+    expect(JSON.stringify(sections[0])).toContain(`@${tweet.author.id}`);
+    expect(JSON.stringify(sections[0])).toContain(tweet.author.url);
   });
 
-  it("本文とメトリクスを TextDisplay として持つ", () => {
+  it("本文とメトリクスを含む", () => {
     const tweet = createMockTweet({ text: "hello world" });
     const json = buildJson({ tweet });
 
-    const texts = componentsOf(json, ComponentType.TextDisplay);
-    expect(texts.length).toBeGreaterThanOrEqual(2);
+    // 本文はヘッダと同じ Section 内に入るため、Container 直下の
+    // TextDisplay はメトリクスのみになる
     expect(allText(json)).toContain("hello world");
     expect(allText(json)).toContain(String(tweet.metrics.likes));
   });
@@ -80,14 +83,6 @@ describe("ComponentsV2Builder", () => {
   });
 
   describe("動画", () => {
-    it("添付済み動画を attachment:// で Container 内に含める", () => {
-      const json = buildJson({ tweet: createMockTweet(), attachedFileNames: ["output1.mp4"] });
-
-      const files = componentsOf(json, ComponentType.File);
-      expect(files).toHaveLength(1);
-      expect(JSON.stringify(files[0])).toContain("attachment://output1.mp4");
-    });
-
     it("上限超過の動画はリンクボタンにする", () => {
       const json = buildJson({
         tweet: createMockTweet(),
@@ -166,8 +161,10 @@ describe("ComponentsV2Builder", () => {
 
     it("著者名は失われない", () => {
       const json = buildJson({ tweet: noIcon() });
+      const displayName = noIcon().author.name.replace(/\(@[^)]+\)$/, "");
 
-      expect(allText(json)).toContain(noIcon().author.name);
+      expect(allText(json)).toContain(displayName);
+      expect(allText(json)).toContain(`@${noIcon().author.id}`);
     });
 
     it("Section を使わずヘッダを表現する", () => {
@@ -175,6 +172,142 @@ describe("ComponentsV2Builder", () => {
 
       expect(componentsOf(json, ComponentType.Section)).toHaveLength(0);
       expect(componentsOf(json, ComponentType.TextDisplay).length).toBeGreaterThanOrEqual(2);
+    });
+  });
+  describe("ヘッダとフッタのリンク", () => {
+    it("ヘッダのリンク先はアカウントのみにする", () => {
+      const tweet = createMockTweet();
+      const json = buildJson({ tweet });
+
+      const sections = componentsOf(json, ComponentType.Section);
+      const header = JSON.stringify(sections[0]);
+
+      // 表示が同一でリンク先だけ違う行を並べない
+      expect(header).toContain(tweet.author.url);
+      expect(header).not.toContain(tweet.url);
+    });
+
+    it("ポストへのリンクはフッタに置き、それと分かる文言にする", () => {
+      const tweet = createMockTweet();
+      const texts = componentsOf(buildJson({ tweet }), ComponentType.TextDisplay);
+      const footer = JSON.stringify(texts[texts.length - 1]);
+
+      expect(footer).toContain(tweet.url);
+      expect(footer).toContain("ポストを開く");
+    });
+
+    it("通常のポストでは見出しを使わない", () => {
+      const json = buildJson({ tweet: createMockTweet() });
+
+      // ### は前後に余白を作るため本文との間隔が開く
+      expect(allText(json)).not.toContain("###");
+    });
+
+    it("記事付きポストではタイトルを見出しにしてポストへリンクする", () => {
+      const tweet = createMockTweet({
+        article: { id: "1", title: "記事タイトル", previewText: "概要", imageUrl: "" } as never,
+      });
+      const json = buildJson({ tweet });
+
+      expect(allText(json)).toContain("### [記事タイトル](" + tweet.url + ")");
+    });
+
+    it("アイコンが無くてもフッタのポストリンクは失われない", () => {
+      const tweet = createMockTweet({ author: { ...createMockTweet().author, iconUrl: "" } });
+      const json = buildJson({ tweet });
+
+      expect(allText(json)).toContain(tweet.url);
+      expect(allText(json)).toContain("ポストを開く");
+    });
+  });
+  describe("ヘッダと本文の余白", () => {
+    it("ヘッダと本文を1つの TextDisplay にまとめる", () => {
+      const tweet = createMockTweet({ text: "本文テキスト" });
+      const json = buildJson({ tweet });
+
+      // コンポーネント境界ごとに Discord が縦マージンを入れるため、
+      // ヘッダと本文を分けると余白が生まれる
+      const sections = componentsOf(json, ComponentType.Section);
+      const sectionText = JSON.stringify(sections[0]);
+
+      expect(sectionText).toContain("本文テキスト");
+      expect(sectionText).toContain(`@${tweet.author.id}`);
+    });
+
+    it("本文を独立した TextDisplay として持たない", () => {
+      const json = buildJson({ tweet: createMockTweet({ text: "本文テキスト" }) });
+
+      // Container 直下の TextDisplay はメトリクスのみ
+      const texts = componentsOf(json, ComponentType.TextDisplay);
+      expect(texts).toHaveLength(1);
+      expect(JSON.stringify(texts[0])).toContain("ポストを開く");
+    });
+
+    it("アイコンが無い場合もヘッダと本文をまとめる", () => {
+      const tweet = createMockTweet({
+        text: "本文テキスト",
+        author: { ...createMockTweet().author, iconUrl: "" },
+      });
+      const json = buildJson({ tweet });
+
+      const texts = componentsOf(json, ComponentType.TextDisplay);
+      // ヘッダ+本文 と メトリクス の2つ
+      expect(texts).toHaveLength(2);
+      expect(JSON.stringify(texts[0])).toContain("本文テキスト");
+    });
+
+    it("本文が空でもヘッダは表示する", () => {
+      const json = buildJson({ tweet: createMockTweet({ text: "" }) });
+
+      const sections = componentsOf(json, ComponentType.Section);
+      expect(JSON.stringify(sections[0])).toContain("@test_user");
+    });
+  });
+  describe("動画URLの直接埋め込み", () => {
+    it("外部URLをそのまま MediaGallery に入れる", () => {
+      const json = buildJson({
+        tweet: createMockTweet({ media: [] }),
+        videoUrls: ["https://video.twimg.com/a/b.mp4"],
+      });
+
+      const galleries = componentsOf(json, ComponentType.MediaGallery);
+      expect(galleries).toHaveLength(1);
+      expect(JSON.stringify(galleries[0])).toContain("https://video.twimg.com/a/b.mp4");
+      // ダウンロードを伴わないため attachment:// にはしない
+      expect(JSON.stringify(galleries[0])).not.toContain("attachment://");
+    });
+
+    it("画像と動画を1つの MediaGallery にまとめる", () => {
+      const tweet = createMockTweet({
+        media: [{ url: "https://e.test/1.jpg", thumbnailUrl: "https://e.test/1.jpg", type: "photo" }],
+      });
+      const json = buildJson({ tweet, videoUrls: ["https://video.twimg.com/a/b.mp4"] });
+
+      const galleries = componentsOf(json, ComponentType.MediaGallery);
+      expect(galleries).toHaveLength(1);
+      const content = JSON.stringify(galleries[0]);
+      expect(content).toContain("1.jpg");
+      expect(content).toContain("https://video.twimg.com/a/b.mp4");
+    });
+
+    it("File コンポーネントを使わない", () => {
+      const json = buildJson({
+        tweet: createMockTweet({ media: [] }),
+        videoUrls: ["https://video.twimg.com/a/b.mp4"],
+      });
+
+      // File はファイルカードとして描画され再生できない
+      expect(componentsOf(json, ComponentType.File)).toHaveLength(0);
+    });
+
+    it("外部URLにも spoiler を適用する", () => {
+      const json = buildJson({
+        tweet: createMockTweet({ media: [] }),
+        videoUrls: ["https://video.twimg.com/a/b.mp4"],
+        spoiler: true,
+      });
+
+      expect(JSON.stringify(componentsOf(json, ComponentType.MediaGallery))).toContain('"spoiler":true');
     });
   });
 });
