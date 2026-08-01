@@ -247,4 +247,56 @@ describe("ChannelConfigService", () => {
       expect(await service().getEmbedVersion("guild-1")).toBe("v2");
     });
   });
+  describe("getEmbedVersionStatus", () => {
+    const service = () => new ChannelConfigService(mockRepo, ALLOW_ALL);
+
+    it("明示設定は explicit として返す", async () => {
+      vi.mocked(mockRepo.getConfig).mockResolvedValue({
+        kind: "found",
+        data: createGuildConfig({ embedVersion: "v1" }),
+      });
+
+      expect(await service().getEmbedVersionStatus("g")).toEqual({ kind: "explicit", version: "v1" });
+    });
+
+    it("未設定は default として返す", async () => {
+      vi.mocked(mockRepo.getConfig).mockResolvedValue({ kind: "found", data: createGuildConfig() });
+
+      expect(await service().getEmbedVersionStatus("g")).toEqual({ kind: "default", version: "v2" });
+    });
+
+    it("不正値も default として返す", async () => {
+      vi.mocked(mockRepo.getConfig).mockResolvedValue({
+        kind: "found",
+        data: createGuildConfig({ embedVersion: "v9" as never }),
+      });
+
+      expect(await service().getEmbedVersionStatus("g")).toEqual({ kind: "default", version: "v2" });
+    });
+
+    it("設定未作成は default として返す", async () => {
+      vi.mocked(mockRepo.getConfig).mockResolvedValue({ kind: "not_found" });
+
+      expect(await service().getEmbedVersionStatus("g")).toEqual({ kind: "default", version: "v2" });
+    });
+
+    it("Redis 障害は unavailable として返す（既定値と区別する）", async () => {
+      vi.mocked(mockRepo.getConfig).mockResolvedValue({ kind: "error", error: new Error("redis down") });
+
+      expect(await service().getEmbedVersionStatus("g")).toEqual({ kind: "unavailable" });
+    });
+
+    it("予期しない例外も unavailable として返す", async () => {
+      vi.mocked(mockRepo.getConfig).mockRejectedValue(new Error("boom"));
+
+      expect(await service().getEmbedVersionStatus("g")).toEqual({ kind: "unavailable" });
+    });
+
+    it("getEmbedVersion は unavailable でも既定値を返す", async () => {
+      vi.mocked(mockRepo.getConfig).mockResolvedValue({ kind: "error", error: new Error("redis down") });
+
+      // 送信経路は止められないため既定へ倒す。診断は status 側で行う
+      expect(await service().getEmbedVersion("g")).toBe("v2");
+    });
+  });
 });

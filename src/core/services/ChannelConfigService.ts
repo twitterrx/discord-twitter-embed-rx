@@ -23,6 +23,17 @@ export interface FallbackPolicies {
 }
 
 /**
+ * 埋め込み方式の判定結果
+ * - explicit: guild が明示的に設定している
+ * - default: 未設定・不正値のため既定を用いる
+ * - unavailable: Redis 障害等で判定できない
+ */
+export type EmbedVersionStatus =
+  | { kind: "explicit"; version: EmbedVersion }
+  | { kind: "default"; version: EmbedVersion }
+  | { kind: "unavailable" };
+
+/**
  * チャンネル設定サービス
  * Bot側でチャンネル許可判定を行う
  */
@@ -139,23 +150,40 @@ export class ChannelConfigService {
    * フォールバック方針（FallbackPolicies）の影響を受けない。
    */
   async getEmbedVersion(guildId: string): Promise<EmbedVersion> {
+    const status = await this.getEmbedVersionStatus(guildId);
+    return status.kind === "unavailable" ? DEFAULT_EMBED_VERSION : status.version;
+  }
+
+  /**
+   * 埋め込みの表示方式を、判定できたかどうかも含めて取得する（診断用）
+   *
+   * getEmbedVersion() は送信経路を止めないため障害時も既定値へ倒すが、
+   * それでは「明示的に v2」と「障害で判定できず既定に倒れた」が区別できない。
+   * 運用状況を確認する用途では両者を混同すると事実と異なる報告になるため、
+   * 取得できたかどうかを保ったまま返す。
+   */
+  async getEmbedVersionStatus(guildId: string): Promise<EmbedVersionStatus> {
     try {
       const result = await this.repository.getConfig(guildId);
 
+      if (result.kind === "error") {
+        return { kind: "unavailable" };
+      }
+
       if (result.kind !== "found") {
-        return DEFAULT_EMBED_VERSION;
+        return { kind: "default", version: DEFAULT_EMBED_VERSION };
       }
 
       const raw = result.data.embedVersion;
 
       if (raw !== "v1" && raw !== "v2") {
-        return DEFAULT_EMBED_VERSION;
+        return { kind: "default", version: DEFAULT_EMBED_VERSION };
       }
 
-      return raw;
+      return { kind: "explicit", version: raw };
     } catch (err) {
-      logger.error(`[ChannelConfig] Unexpected error in getEmbedVersion for guild ${guildId}:`, err);
-      return DEFAULT_EMBED_VERSION;
+      logger.error(`[ChannelConfig] Unexpected error in getEmbedVersionStatus for guild ${guildId}:`, err);
+      return { kind: "unavailable" };
     }
   }
 

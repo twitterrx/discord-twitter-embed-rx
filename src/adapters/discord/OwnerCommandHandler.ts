@@ -1,7 +1,9 @@
+import type { EmbedVersion } from "@rx-twitter/shared";
 import type { Client, Message } from "discord.js";
 
 import type { BanEntry } from "@/core/models/BanEntry";
 import { BanService } from "@/core/services/BanService";
+import { ChannelConfigService } from "@/core/services/ChannelConfigService";
 import logger from "@/utils/logger";
 
 /**
@@ -31,7 +33,8 @@ export class OwnerCommandHandler {
   constructor(
     private readonly ownerUserId: string,
     private readonly banService: BanService,
-    private readonly client: Client
+    private readonly client: Client,
+    private readonly channelConfigService: ChannelConfigService
   ) {}
 
   /**
@@ -79,6 +82,9 @@ export class OwnerCommandHandler {
           break;
         case "guilds":
           await this.handleListGuilds(message);
+          break;
+        case "embed-version":
+          await this.handleEmbedVersion(message);
           break;
         case "help":
           await this.sendHelp(message);
@@ -273,11 +279,65 @@ export class OwnerCommandHandler {
   }
 
   /**
+   * !owner/embed-version
+   *
+   * 埋め込み方式（v1 / v2）の使用状況を表示する。
+   * 全体の内訳と、guild ごとの設定状況を一覧で出す。
+   */
+  private async handleEmbedVersion(message: Message): Promise<void> {
+    const guilds = this.client.guilds.cache;
+
+    if (guilds.size === 0) {
+      await message.reply("Bot は現在どのサーバーにも参加していません。");
+      return;
+    }
+
+    // getEmbedVersion() は障害時も既定値へ倒すため、明示設定と障害を区別できない。
+    // 運用状況の確認では両者の混同が事実と異なる報告になるため status を使う。
+    const entries = await Promise.all(
+      guilds.map(async (g: { id: string; name: string }) => ({
+        id: g.id,
+        name: g.name,
+        status: await this.channelConfigService.getEmbedVersionStatus(g.id),
+      }))
+    );
+
+    const versionOf = (e: (typeof entries)[number]) => (e.status.kind === "unavailable" ? undefined : e.status.version);
+    const count = (v: EmbedVersion) => entries.filter((e) => versionOf(e) === v).length;
+    const unavailable = entries.filter((e) => e.status.kind === "unavailable").length;
+    const explicit = entries.filter((e) => e.status.kind === "explicit").length;
+    const byDefault = entries.filter((e) => e.status.kind === "default").length;
+
+    const header = [
+      `**埋め込み方式の使用状況 (${entries.length}件)**`,
+      `v2: ${count("v2")} / v1: ${count("v1")}` + (unavailable > 0 ? ` / 判定不能: ${unavailable}` : ""),
+      // 判定不能は明示でも既定でもないため、個別に数えて内訳を閉じる
+      `明示設定: ${explicit}件 / 既定: ${byDefault}件`,
+      "",
+    ].join("\n");
+
+    const label = (e: (typeof entries)[number]) => {
+      if (e.status.kind === "unavailable") {
+        return "判定不能";
+      }
+      return e.status.kind === "explicit" ? `${e.status.version}` : `${e.status.version} (既定)`;
+    };
+
+    const lines = entries.map((e) => `\`${e.id}\` — ${e.name} → **${label(e)}**`);
+
+    const chunks = this.chunkText(header + lines.join("\n"), 1900);
+    for (const chunk of chunks) {
+      await message.reply(chunk);
+    }
+  }
+
+  /**
    * !owner/help
    */
   private async sendHelp(message: Message): Promise<void> {
     const helpText = [
       "**Owner コマンド一覧**",
+      "`!owner/embed-version` — 埋め込み方式(v1/v2)の使用状況を表示",
       "",
       "`!owner/ban <userId> [reason]`",
       "  ユーザーを BAN します。BAN されたユーザーからの投稿は Bot が無視します。",
