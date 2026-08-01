@@ -190,8 +190,11 @@ Dashboard (Web UI)
 
 | 状態       | 環境変数                    | デフォルト | 挙動                       |
 | ---------- | --------------------------- | ---------- | -------------------------- |
-| Redis 障害 | `REDIS_DOWN_FALLBACK`       | `deny`     | 全チャンネル拒否（安全側） |
-| 設定未作成 | `CONFIG_NOT_FOUND_FALLBACK` | `deny`     | 全チャンネル拒否           |
+| Redis 障害 | `REDIS_DOWN_FALLBACK`       | `allow`    | 全チャンネル許可（可用性優先） |
+| 設定未作成 | `CONFIG_NOT_FOUND_FALLBACK` | `allow`    | 全チャンネル許可（導入直後から使える） |
+
+いずれも既定は `allow`。チャンネルを絞る運用者のみ `deny` を明示する。
+有効な設定は起動時に `[ChannelConfig] Fallback policy: ...` として INFO ログに出力される。
 
 ### 設定の三値型（ConfigResult）
 

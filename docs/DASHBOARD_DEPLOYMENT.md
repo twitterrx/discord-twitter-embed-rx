@@ -316,9 +316,12 @@ DATABASE_URL=file:/app/data/dashboard.db
 |--------|------|------|-----|
 | `DISCORD_BOT_TOKEN` | ✅ | Discord Bot トークン | `OTk...` |
 | `REDIS_URL` | ✅ | Redis 接続 URL | `redis://redis:6379` |
-| `REDIS_DOWN_FALLBACK` | - | Redis 障害時の挙動（`deny`/`allow`）デフォルト: `deny` | `deny` |
-| `ENABLE_ORPHAN_CLEANUP` | - | 起動時の孤立キー掃除（デフォルト: `false`） | `false` |
-| `ENABLE_METRICS` | - | `/metrics` エンドポイント有効化（デフォルト: `false`） | `false` |
+| `REDIS_DOWN_FALLBACK` | - | Redis 障害時の挙動（`allow`/`deny`）デフォルト: `allow` | `allow` |
+| `CONFIG_NOT_FOUND_FALLBACK` | - | 設定未作成時の挙動（`allow`/`deny`）デフォルト: `allow` | `allow` |
+| `ENABLE_ORPHAN_CLEANUP` | - | 起動時の孤立キー掃除（デフォルト: `false`）。有効化は文字列 `"true"` のみ | `false` |
+| `LOG_DIR` | - | ログの出力先ディレクトリ（省略時はリポジトリの1つ上の `logs/`）。空文字を設定するとカレントディレクトリになる | `/app/bot/logs` |
+| `REDIS_TTL` | - | リプライログの保持期間（秒）。デフォルト: `86400` | `86400` |
+| `ENABLE_METRICS` | - | **（未実装）** `/metrics` エンドポイント有効化。設定しても現時点では何も起きない。設計は「メトリクス収集」の節を参照 | - |
 
 ### Dashboard 側
 
@@ -372,14 +375,25 @@ openssl rand -base64 32
 > 
 > **環境変数での切替**:
 > ```
-> REDIS_DOWN_FALLBACK=deny   # 全チャンネル拒否（★デフォルト、安全優先）
-> REDIS_DOWN_FALLBACK=allow  # 全チャンネル許可（可用性優先）
+> REDIS_DOWN_FALLBACK=allow  # 全チャンネル許可（★デフォルト、可用性優先）
+> REDIS_DOWN_FALLBACK=deny   # 全チャンネル拒否（障害中も whitelist を維持する）
 > ```
 > 
-> **デフォルトが `deny` である理由**:
-> - 配布版として、Redis 障害時に Bot が勝手にどこでも反応する状態は危険
-> - 荒らし耐性の観点からも、安全側に倒すべき
-> - 可用性を優先したい運用者は明示的に `allow` を選択できる
+> **デフォルトが `allow` である理由**:
+> - チャンネルを個別に絞る運用者はマイノリティであり、多数派は設定を触らない
+> - 既定を `deny` にすると、障害時に「Bot が壊れた」と見える形で多数派に影響が出る
+> - 制限したい運用者は `deny` を明示でき、その選択は起動時ログで確認できる
+> 
+> **受け入れているトレードオフ**:
+> - **Bot 再起動 × Redis 障害中**の交差では、インメモリキャッシュが空のまま `error` 経路に入るため、
+>   whitelist を設定済みのギルドでも一時的に全チャンネルで反応する
+> - ただし Redis エラー時にキャッシュは破棄されない（`not_found` のときのみ破棄）ため、
+>   障害中でもキャッシュに乗っているギルドは正常に動作し続ける。影響はキャッシュミス時に限定される
+> - この挙動を避けたい場合は `REDIS_DOWN_FALLBACK=deny` を明示する
+> 
+> **設定の確認方法**:
+> 起動時に `[ChannelConfig] Fallback policy: REDIS_DOWN=..., CONFIG_NOT_FOUND=...` が INFO ログに出力される。
+> 解釈できない値（`DENY` 以外の綴り違いなど）は WARN で警告され、既定の `allow` に倒れる。
 
 > **joined 復旧の運用考慮**:
 >
@@ -470,7 +484,7 @@ openssl rand -base64 32
 | **「セッションが切れました」が頻発** | Discord アクセストークンの期限切れ | 再ログインで復旧（仕様通りの動作） |
 | **チャンネル一覧が空のまま** | ① Bot がチャンネル情報を取得できていない ② Bot がオフライン | ① 「再取得ボタン」を押して 10分待つ ② Bot コンテナを確認 |
 | **設定変更が 409 Conflict になる** | 別のユーザー/タブが同時に設定を変更した | ページをリロードして最新の設定を取得し直す |
-| **Bot がどこでも反応しない** | ① Redis がダウン + `REDIS_DOWN_FALLBACK=deny` ② whitelist が空 | ① Redis コンテナを確認 ② Dashboard で whitelist を設定 |
+| **Bot がどこでも反応しない** | ① Redis がダウン + `REDIS_DOWN_FALLBACK=deny` を明示している ② `CONFIG_NOT_FOUND_FALLBACK=deny` を明示していて設定が未作成 ③ whitelist が空 | ① Redis コンテナを確認（既定の `allow` なら障害中も反応する） ② 起動時の `[ChannelConfig] Fallback policy` ログで有効値を確認 ③ Dashboard で whitelist を設定 |
 | **Dashboard が 503 を返す** | Redis への接続に失敗 | ① Redis コンテナを確認 ② `docker compose logs redis` でエラー確認 |
 
 ### ヘルスチェック手順

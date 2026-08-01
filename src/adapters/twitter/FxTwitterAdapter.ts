@@ -1,7 +1,7 @@
 import { BaseTwitterAdapter, ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
 import type { Tweet, TweetArticle, TweetMedia } from "@/core/models/Tweet";
 import { FxTwitterApi } from "@/fxtwitter/api";
-import type { SocialThread, APITwitterStatus } from "@/fxtwitter/generated/model";
+import type { SocialThreadOutput, APITwitterStatus } from "@/fxtwitter/generated/model";
 import logger from "@/utils/logger";
 
 /**
@@ -25,7 +25,23 @@ export class FxTwitterAdapter extends BaseTwitterAdapter implements ITwitterAdap
       const apiUrl = this.transformUrl(url);
       const response = await this.api.getPostInformation(apiUrl);
 
-      if (!response || !response.status || !isTwitterStatus(response.status)) {
+      if (!response || !response.status) {
+        return undefined;
+      }
+
+      if (isTombstone(response.status)) {
+        logger.debug("FxTwitterAdapter: Post unavailable (tombstone)", { url });
+        return undefined;
+      }
+
+      if (!isTwitterStatus(response.status)) {
+        // 現行エンドポイントは Twitter 専用のため、ここに来るのは想定外
+        const candidate = response.status as { type?: unknown; provider?: unknown };
+        logger.warn("FxTwitterAdapter: Non-Twitter status received", {
+          url,
+          type: candidate.type,
+          provider: candidate.provider,
+        });
         return undefined;
       }
 
@@ -123,6 +139,30 @@ export class FxTwitterAdapter extends BaseTwitterAdapter implements ITwitterAdap
 
 type TwitterStatusData = APITwitterStatus;
 
-function isTwitterStatus(status: SocialThread["status"]): status is TwitterStatusData {
-  return !!status && typeof status === "object" && "type" in status && status.type === "status";
+/** status 系のレスポンスに共通して存在する判別用フィールド */
+type StatusDiscriminator = { type?: unknown; provider?: unknown };
+
+const asDiscriminator = (status: SocialThreadOutput["status"]): StatusDiscriminator | undefined =>
+  status && typeof status === "object" ? (status as StatusDiscriminator) : undefined;
+
+/**
+ * 投稿が取得できないことを示す tombstone かどうか
+ * 削除・非公開・凍結などで発生する。日常的な事象として扱う。
+ */
+function isTombstone(status: SocialThreadOutput["status"]): boolean {
+  return asDiscriminator(status)?.type === "tombstone";
+}
+
+/**
+ * Twitter の status かどうか
+ *
+ * 判別子 type は Bluesky / Mastodon / Instagram / Threads の status でも "status" を取るため、
+ * type だけでは Twitter を特定できない。provider まで確認する。
+ *
+ * なお他プラットフォームの provider はスキーマ上 string 型のため、TypeScript は
+ * この比較で union を絞り込めない。実行時の正しさと、型述語が事実と一致することを担保する。
+ */
+function isTwitterStatus(status: SocialThreadOutput["status"]): status is TwitterStatusData {
+  const candidate = asDiscriminator(status);
+  return candidate?.type === "status" && candidate.provider === "twitter";
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub PR Review"
+  short_description: "GitHub PRをIssue・CI・品質ゲートまで検証してレビュー"
+  default_prompt: "$gh-review-pr を使って指定されたGitHub PRをレビューし、実行可能な指摘を報告してください。"

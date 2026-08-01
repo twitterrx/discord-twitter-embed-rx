@@ -6,18 +6,31 @@ import logger from "@/utils/logger";
 /** お知らせ配信先のデフォルト（未設定時はオーナーへの DM） */
 const DEFAULT_ANNOUNCE_TARGET: AnnounceTarget = { mode: "dm" };
 
+/** フォールバック方針。既定は allow（可用性優先）、制限したい運用者のみ deny を明示する */
+export type FallbackPolicy = "allow" | "deny";
+
 /**
- * P0対応: フォールバック設定
+ * 判定不能時に適用する方針
+ *
+ * 環境変数の解釈は Core の責務ではないため、src/config/fallbackPolicy.ts で
+ * 解決したものを src/index.ts から注入する。
  */
-const REDIS_DOWN_FALLBACK = process.env.REDIS_DOWN_FALLBACK === "deny" ? "deny" : "allow";
-const CONFIG_NOT_FOUND_FALLBACK = process.env.CONFIG_NOT_FOUND_FALLBACK === "allow" ? "allow" : "deny";
+export interface FallbackPolicies {
+  /** Redis 障害時（ConfigResult.kind === "error"） */
+  redisDown: FallbackPolicy;
+  /** 設定未作成時（ConfigResult.kind === "not_found"） */
+  configNotFound: FallbackPolicy;
+}
 
 /**
  * チャンネル設定サービス
  * Bot側でチャンネル許可判定を行う
  */
 export class ChannelConfigService {
-  constructor(private readonly repository: IChannelConfigRepository) {}
+  constructor(
+    private readonly repository: IChannelConfigRepository,
+    private readonly policies: FallbackPolicies
+  ) {}
 
   /**
    * P0: isChannelAllowed で ConfigResult.kind に応じた分岐
@@ -41,16 +54,16 @@ export class ChannelConfigService {
         case "not_found":
           // P0: 設定が見つからない場合は CONFIG_NOT_FOUND_FALLBACK を適用
           logger.warn(
-            `[ChannelConfig] Config not found for guild ${guildId}, applying CONFIG_NOT_FOUND_FALLBACK: ${CONFIG_NOT_FOUND_FALLBACK}`
+            `[ChannelConfig] Config not found for guild ${guildId}, applying CONFIG_NOT_FOUND_FALLBACK: ${this.policies.configNotFound}`
           );
-          return CONFIG_NOT_FOUND_FALLBACK === "allow";
+          return this.policies.configNotFound === "allow";
 
         case "error":
           // P0: Redis障害時はフォールバック設定を適用
           logger.error(`[ChannelConfig] Error fetching config for guild ${guildId}: ${result.error.message}`);
-          logger.warn(`[ChannelConfig] Applying REDIS_DOWN_FALLBACK: ${REDIS_DOWN_FALLBACK}`);
+          logger.warn(`[ChannelConfig] Applying REDIS_DOWN_FALLBACK: ${this.policies.redisDown}`);
 
-          if (REDIS_DOWN_FALLBACK === "deny") {
+          if (this.policies.redisDown === "deny") {
             return false;
           } else {
             return true;
@@ -60,7 +73,7 @@ export class ChannelConfigService {
           // TypeScript exhaustiveness check
           const _exhaustive: never = result;
           logger.error(`[ChannelConfig] Unexpected ConfigResult kind: ${JSON.stringify(_exhaustive)}`);
-          return REDIS_DOWN_FALLBACK === "allow";
+          return this.policies.redisDown === "allow";
         }
       }
     } catch (err) {
@@ -68,7 +81,7 @@ export class ChannelConfigService {
       logger.error(`[ChannelConfig] Unexpected error in isChannelAllowed:`, err);
 
       // フォールバック設定を適用
-      return REDIS_DOWN_FALLBACK === "allow";
+      return this.policies.redisDown === "allow";
     }
   }
 

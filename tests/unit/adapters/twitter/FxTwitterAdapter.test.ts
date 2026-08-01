@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { mediaUrl } from "../../../fixtures/testMediaUrl";
 
 import type { FxTwitterApi } from "@/fxtwitter/api";
 import type {
-  SocialThread,
+  SocialThreadOutput,
   APITwitterStatus,
   APITwitterStatusArticle,
   APIUser,
@@ -11,12 +11,24 @@ import type {
 } from "@/fxtwitter/generated/model";
 import { APITwitterStatus as APITwitterStatusSchema } from "@/fxtwitter/generated/model";
 import { FxTwitterAdapter } from "@/adapters/twitter/FxTwitterAdapter";
+import logger from "@/utils/logger";
 
 vi.mock("@/utils/logger", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-type TwitterStatus = Extract<SocialThread["status"], { type: "status" }>;
+/**
+ * API が返すのは Zod で検証済みのデータなので、入力型 SocialThread ではなく
+ * 出力型 SocialThreadOutput を使う。
+ *
+ * なお SocialThread["status"]（入力型）は unknown へ潰れる。orval が再帰スキーマに
+ * 付ける zod.ZodType<APITwitterStatus> は Input 型引数が省略されており、
+ * zod v4 では既定の unknown になるため。出力型側は正しい union に解決される。
+ *
+ * また status の判別子 type は Bluesky/Mastodon など他プラットフォームでも "status" のため、
+ * type だけでは Twitter を特定できない。ここでは Twitter の型を直接指す。
+ */
+type TwitterStatus = APITwitterStatus;
 
 const createFxAuthor = (overrides: Partial<APIUser> = {}): APIUser => ({
   type: "profile",
@@ -25,6 +37,18 @@ const createFxAuthor = (overrides: Partial<APIUser> = {}): APIUser => ({
   screen_name: "test_user",
   avatar_url: mediaUrl("icon.jpg"),
   banner_url: mediaUrl("banner.jpg"),
+  description: "test bio",
+  raw_description: { text: "test bio", facets: [] },
+  location: "Tokyo",
+  url: "https://x.com/test_user",
+  protected: false,
+  followers: 100,
+  following: 50,
+  statuses: 10,
+  media_count: 5,
+  likes: 20,
+  joined: "2020-01-01T00:00:00.000Z",
+  website: null,
   ...overrides,
 });
 
@@ -46,8 +70,20 @@ const createFxStatus = (overrides: Partial<APITwitterStatus> = {}): TwitterStatu
   created_timestamp: 1704067200,
   likes: 100,
   reposts: 50,
+  quotes: 5,
   replies: 10,
   author: createFxAuthor(),
+  media: {},
+  raw_text: { text: "This is a test tweet", display_text_range: [0, 20], facets: [] },
+  lang: "en",
+  possibly_sensitive: false,
+  replying_to: null,
+  source: "Twitter Web App",
+  embed_card: "tweet",
+  provider: "twitter",
+  is_note_tweet: false,
+  community_note: null,
+  reposted_by: null,
   ...overrides,
 });
 
@@ -83,9 +119,11 @@ const createFxVideo = (overrides: Partial<NonNullable<APITwitterStatusMedia["vid
   ...overrides,
 });
 
-const createFxResponse = (status: TwitterStatus): SocialThread => ({
+const createFxResponse = (status: TwitterStatus): SocialThreadOutput => ({
   code: 200,
   status,
+  thread: null,
+  author: null,
 });
 
 const createFxArticle = (overrides: Partial<APITwitterStatusArticle> = {}): APITwitterStatusArticle => ({
@@ -175,8 +213,8 @@ function generateFxMediaPatterns(): FxMediaPattern[] {
 
   // (B) media.all がなく photos + videos のみ（フォールバック）
   const fallbackCombos: {
-    photos: string[];
-    videos: string[];
+    photos: NonNullable<APITwitterStatusMedia["photos"]>[number]["type"][];
+    videos: NonNullable<APITwitterStatusMedia["videos"]>[number]["type"][];
   }[] = [
     { photos: [], videos: [] },
     { photos: ["photo"], videos: [] },
@@ -223,12 +261,14 @@ function generateFxMediaPatterns(): FxMediaPattern[] {
 const FX_MEDIA_PATTERNS = generateFxMediaPatterns();
 
 describe("FxTwitterAdapter", () => {
-  let mockApi: { getPostInformation: ReturnType<typeof vi.fn> };
+  let mockApi: { getPostInformation: Mock<FxTwitterApi["getPostInformation"]> };
   let adapter: FxTwitterAdapter;
 
   beforeEach(() => {
-    mockApi = { getPostInformation: vi.fn() };
-    adapter = new FxTwitterAdapter(mockApi as FxTwitterApi);
+    vi.clearAllMocks();
+    mockApi = { getPostInformation: vi.fn<FxTwitterApi["getPostInformation"]>() };
+    // adapter が利用するのは getPostInformation のみのため、部分実装を注入する
+    adapter = new FxTwitterAdapter(mockApi as unknown as FxTwitterApi);
   });
 
   describe("fetchTweet", () => {
@@ -534,7 +574,8 @@ describe("FxTwitterAdapter", () => {
     });
 
     it("レスポンスに status が含まれない場合 undefined を返す", async () => {
-      mockApi.getPostInformation.mockResolvedValue({ code: 404 });
+      // status を含まない不正レスポンスを意図的に流し込む
+      mockApi.getPostInformation.mockResolvedValue({ code: 404 } as unknown as SocialThreadOutput);
 
       const result = await adapter.fetchTweet("https://x.com/user/status/123");
 
@@ -617,6 +658,93 @@ describe("FxTwitterAdapter", () => {
       expect(result?.quote?.media).toHaveLength(1);
       expect(result?.quote?.media[0].type).toBe("photo");
       expect(result?.quote?.media[0].url).toBe(mediaUrl("qt_fb_photo.jpg"));
+    });
+  });
+  describe("Twitter 以外の status の扱い", () => {
+    /** 判別子 type は他プラットフォームでも "status" のため、provider で判別する */
+    const createBlueskyStatus = () =>
+      ({
+        ...createFxStatus(),
+        provider: "bluesky",
+      }) as unknown as TwitterStatus;
+
+    const createTombstone = () =>
+      ({
+        type: "tombstone",
+        provider: "twitter",
+        reason: "deleted",
+      }) as unknown as TwitterStatus;
+
+    it("provider が twitter でない status は展開しない", async () => {
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(createBlueskyStatus()));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result).toBeUndefined();
+    });
+
+    it("Twitter 以外の provider は想定外として warn で記録する", async () => {
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(createBlueskyStatus()));
+
+      await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(logger.warn).toHaveBeenCalledTimes(1);
+      const [, meta] = vi.mocked(logger.warn).mock.calls[0] as unknown as [
+        string,
+        Record<string, unknown>,
+      ];
+      expect(meta.provider).toBe("bluesky");
+    });
+
+    it("tombstone は展開せず、日常的な事象として debug で記録する", async () => {
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(createTombstone()));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result).toBeUndefined();
+      expect(logger.debug).toHaveBeenCalledTimes(1);
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("provider を欠く status は展開しない", async () => {
+      // 通常は Zod 検証（tests/unit/fxtwitter/generatedSchema.test.ts で固定）で
+      // 弾かれる形だが、ガード単体でも拒否することを境界として明示しておく
+      const status = createFxStatus();
+      delete (status as { provider?: unknown }).provider;
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(status));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledTimes(1);
+      const [, meta] = vi.mocked(logger.warn).mock.calls[0] as unknown as [
+        string,
+        Record<string, unknown>,
+      ];
+      expect(meta.provider).toBeUndefined();
+    });
+
+    it("正常な Twitter status では警告を出さない", async () => {
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(createFxStatus()));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result).toBeDefined();
+      expect(logger.warn).not.toHaveBeenCalled();
+    });
+
+    it("引用が tombstone の場合、本体は展開し引用のみ落とす", async () => {
+      const status = createFxStatus({
+        text: "Check this!",
+        quote: createTombstone() as never,
+      });
+      mockApi.getPostInformation.mockResolvedValue(createFxResponse(status));
+
+      const result = await adapter.fetchTweet("https://x.com/user/status/123");
+
+      expect(result).toBeDefined();
+      expect(result?.text).toBe("Check this!");
+      expect(result?.quote).toBeUndefined();
     });
   });
 });

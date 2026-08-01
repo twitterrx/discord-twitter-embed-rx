@@ -2,17 +2,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { GuildConfig, IChannelConfigRepository } from "@rx-twitter/shared";
 
+import type { FallbackPolicies } from "@/core/services/ChannelConfigService";
 import { ChannelConfigService } from "@/core/services/ChannelConfigService";
 
 vi.mock("@/utils/logger", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
+/** 配信先の解決はフォールバック方針に依存しないため、既定値を渡す */
+const ALLOW_ALL: FallbackPolicies = { redisDown: "allow", configNotFound: "allow" };
+
 const createMockRepo = (): IChannelConfigRepository => ({
   getConfig: vi.fn(),
   saveConfig: vi.fn(),
   notifyUpdate: vi.fn(),
-  isChannelAllowed: vi.fn(),
 });
 
 const createGuildConfig = (overrides: Partial<GuildConfig> = {}): GuildConfig => ({
@@ -36,7 +39,7 @@ describe("ChannelConfigService.getAnnounceTarget", () => {
       kind: "found",
       data: createGuildConfig({ announceTarget: { mode: "channel", channelId: "ch-1" } }),
     });
-    const service = new ChannelConfigService(mockRepo);
+    const service = new ChannelConfigService(mockRepo, ALLOW_ALL);
 
     expect(await service.getAnnounceTarget("guild-1")).toEqual({ mode: "channel", channelId: "ch-1" });
   });
@@ -46,14 +49,14 @@ describe("ChannelConfigService.getAnnounceTarget", () => {
       kind: "found",
       data: createGuildConfig(),
     });
-    const service = new ChannelConfigService(mockRepo);
+    const service = new ChannelConfigService(mockRepo, ALLOW_ALL);
 
     expect(await service.getAnnounceTarget("guild-1")).toEqual({ mode: "dm" });
   });
 
   it("設定が見つからない場合は DM デフォルトを返す", async () => {
     vi.mocked(mockRepo.getConfig).mockResolvedValue({ kind: "not_found" });
-    const service = new ChannelConfigService(mockRepo);
+    const service = new ChannelConfigService(mockRepo, ALLOW_ALL);
 
     expect(await service.getAnnounceTarget("guild-1")).toEqual({ mode: "dm" });
   });
@@ -65,14 +68,14 @@ describe("ChannelConfigService.getAnnounceTarget", () => {
         announceTarget: { mode: "invalid" as unknown as "dm" },
       }),
     });
-    const service = new ChannelConfigService(mockRepo);
+    const service = new ChannelConfigService(mockRepo, ALLOW_ALL);
 
     expect(await service.getAnnounceTarget("guild-1")).toEqual({ mode: "dm" });
   });
 
   it("Redis 障害（error）の場合は DM デフォルトを返す", async () => {
     vi.mocked(mockRepo.getConfig).mockResolvedValue({ kind: "error", error: new Error("redis down") });
-    const service = new ChannelConfigService(mockRepo);
+    const service = new ChannelConfigService(mockRepo, ALLOW_ALL);
 
     expect(await service.getAnnounceTarget("guild-1")).toEqual({ mode: "dm" });
   });
