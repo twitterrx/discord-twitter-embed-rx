@@ -28,8 +28,6 @@ const MAX_GALLERY_ITEMS = 10;
 
 export interface ComponentsV2Input {
   tweet: Tweet;
-  /** 添付済み動画のファイル名（Container 内で attachment:// として参照する） */
-  attachedFileNames?: string[];
   /** 上限を超えたためリンクで案内する動画URL */
   oversizedVideoUrls?: string[];
   /**
@@ -53,7 +51,7 @@ export class ComponentsV2Builder {
    * ツイートから Container を作成する
    */
   build(input: ComponentsV2Input): ContainerBuilder {
-    const { tweet, attachedFileNames = [], oversizedVideoUrls = [], videoUrls = [], spoiler = false } = input;
+    const { tweet, oversizedVideoUrls = [], videoUrls = [], spoiler = false } = input;
 
     // スポイラーは Container 全体へ適用する。MediaGallery / File だけに
     // 立てると、テキストのみのツイートで指定が消える
@@ -66,7 +64,7 @@ export class ComponentsV2Builder {
       container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### :bar_chart: poll\n${poll}`));
     }
 
-    const gallery = this.createGallery(tweet, attachedFileNames, videoUrls, spoiler);
+    const gallery = this.createGallery(tweet, videoUrls, spoiler);
     if (gallery) {
       container.addMediaGalleryComponents(gallery);
     }
@@ -128,12 +126,7 @@ export class ComponentsV2Builder {
    * 従来は同一URLの Embed を並べて Discord のギャラリー結合に頼っていたが、
    * v2 では MediaGallery で明示的に表現できる。
    */
-  private createGallery(
-    tweet: Tweet,
-    attachedFileNames: string[],
-    videoUrls: string[],
-    spoiler: boolean
-  ): MediaGalleryBuilder | undefined {
+  private createGallery(tweet: Tweet, videoUrls: string[], spoiler: boolean): MediaGalleryBuilder | undefined {
     const urls = tweet.media.filter((m) => m.type === "photo").map((m) => m.thumbnailUrl);
 
     if (tweet.article?.imageUrl) {
@@ -142,10 +135,7 @@ export class ComponentsV2Builder {
 
     // 動画も同じギャラリーへ入れる。File はファイルカードとして描画され
     // 再生できないため、Container 内で再生させるには MediaGallery を使う。
-    urls.push(...attachedFileNames.map((name) => `attachment://${name}`));
-
-    // 外部URLをそのまま渡す経路。ダウンロードもアップロードも伴わないため
-    // 添付上限の影響を受けない。
+    // URL をそのまま渡せるため、ダウンロードも添付上限の判定も不要。
     urls.push(...videoUrls);
 
     if (urls.length === 0) {

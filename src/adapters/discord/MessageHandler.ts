@@ -361,24 +361,17 @@ export class MessageHandler {
    * スポイラーは Container のぼかしで表現するため、ボタンと collector も使わない。
    */
   private async sendComponentsV2Message(message: Message, tweet: Tweet, isSpoiler: boolean): Promise<void> {
-    // 動画が無ければ一時ディレクトリの作成もダウンロードも不要
-    const hasVideo = this.mediaHandler.filterVideos(tweet.media).length > 0;
-    const { attachments, largeVideoUrls } = hasVideo
-      ? await this.downloadVideoAttachments(tweet, message.guild)
-      : { attachments: [], largeVideoUrls: [] };
+    // 動画は元の URL をそのままギャラリーへ埋め込む。
+    // ダウンロードも添付も行わないため、アップロード上限の影響を受けず、
+    // 一時ディレクトリの作成と後始末も不要になる。
+    const videoUrls = this.mediaHandler.filterVideos(tweet.media).map((v) => v.url);
 
-    const container = this.componentsV2Builder.build({
-      tweet,
-      attachedFileNames: attachments.map((a) => a.name).filter((name): name is string => Boolean(name)),
-      oversizedVideoUrls: largeVideoUrls,
-      spoiler: isSpoiler,
-    });
+    const container = this.componentsV2Builder.build({ tweet, videoUrls, spoiler: isSpoiler });
 
     // IsComponentsV2 を立てたメッセージでは content も embeds も使えない
     const replyMessage = await message.reply({
       flags: MessageFlags.IsComponentsV2,
       components: [container],
-      files: attachments,
       allowedMentions: { repliedUser: false },
     });
 
