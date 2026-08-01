@@ -133,4 +133,48 @@ describe("ComponentsV2Builder", () => {
       expect(json).toContain("はい");
     });
   });
+  describe("スポイラー", () => {
+    it("Container 全体にスポイラーを適用する", () => {
+      const json = buildJson({ tweet: createMockTweet(), spoiler: true });
+
+      expect(json.spoiler).toBe(true);
+    });
+
+    it("テキストのみのツイートでもスポイラーが残る", () => {
+      // メディアが無い場合、MediaGallery / File が作られないため
+      // それらにしかフラグを立てないと spoiler 指定が消える
+      const json = buildJson({ tweet: createMockTweet({ media: [] }), spoiler: true });
+
+      expect(json.spoiler).toBe(true);
+    });
+
+    it("spoiler 未指定なら伏せない", () => {
+      const json = buildJson({ tweet: createMockTweet() });
+
+      expect(json.spoiler ?? false).toBe(false);
+    });
+  });
+
+  describe("著者アイコンが無い場合", () => {
+    // FxTwitterAdapter は avatar_url が null のとき空文字へ変換するため到達しうる
+    const noIcon = () => createMockTweet({ author: { ...createMockTweet().author, iconUrl: "" } });
+
+    it("シリアライズできる", () => {
+      // accessory を持たない Section は toJSON() で CombinedError を投げる
+      expect(() => buildJson({ tweet: noIcon() })).not.toThrow();
+    });
+
+    it("著者名は失われない", () => {
+      const json = buildJson({ tweet: noIcon() });
+
+      expect(allText(json)).toContain(noIcon().author.name);
+    });
+
+    it("Section を使わずヘッダを表現する", () => {
+      const json = buildJson({ tweet: noIcon() });
+
+      expect(componentsOf(json, ComponentType.Section)).toHaveLength(0);
+      expect(componentsOf(json, ComponentType.TextDisplay).length).toBeGreaterThanOrEqual(2);
+    });
+  });
 });

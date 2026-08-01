@@ -50,9 +50,11 @@ export class ComponentsV2Builder {
   build(input: ComponentsV2Input): ContainerBuilder {
     const { tweet, attachedFileNames = [], oversizedVideoUrls = [], spoiler = false } = input;
 
-    const container = new ContainerBuilder().setAccentColor(ACCENT_COLOR);
+    // スポイラーは Container 全体へ適用する。MediaGallery / File だけに
+    // 立てると、テキストのみのツイートで指定が消える
+    const container = new ContainerBuilder().setAccentColor(ACCENT_COLOR).setSpoiler(spoiler);
 
-    container.addSectionComponents(this.createHeader(tweet));
+    this.addHeader(container, tweet);
 
     const body = truncate(buildTweetBody(tweet), MAX_BODY_LENGTH);
     if (body !== "") {
@@ -85,21 +87,30 @@ export class ComponentsV2Builder {
   }
 
   /**
-   * 著者情報とツイートへのリンク。アイコンはサムネイルとして添える
+   * 著者情報とツイートへのリンクを追加する
+   *
+   * アイコンがあれば Section のサムネイルとして添える。Section の accessory は
+   * 必須で、持たない Section は toJSON() が CombinedError を投げるため、
+   * アイコンが無い場合は通常の TextDisplay として追加する。
+   * FxTwitter の avatar_url は nullable で、Adapter が空文字へ変換するため到達しうる。
    */
-  private createHeader(tweet: Tweet): SectionBuilder {
+  private addHeader(container: ContainerBuilder, tweet: Tweet): void {
     const title = tweet.article?.title ?? tweet.author.name;
-    const heading = `### [${title}](${tweet.url})\n[${tweet.author.name}](${tweet.author.url})`;
-
-    const section = new SectionBuilder().addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(truncate(heading, MAX_POLL_LENGTH))
+    const heading = truncate(
+      `### [${title}](${tweet.url})\n[${tweet.author.name}](${tweet.author.url})`,
+      MAX_POLL_LENGTH
     );
 
-    if (tweet.author.iconUrl) {
-      section.setThumbnailAccessory((thumbnail) => thumbnail.setURL(tweet.author.iconUrl));
+    if (!tweet.author.iconUrl) {
+      container.addTextDisplayComponents(new TextDisplayBuilder().setContent(heading));
+      return;
     }
 
-    return section;
+    container.addSectionComponents(
+      new SectionBuilder()
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(heading))
+        .setThumbnailAccessory((thumbnail) => thumbnail.setURL(tweet.author.iconUrl))
+    );
   }
 
   /**
