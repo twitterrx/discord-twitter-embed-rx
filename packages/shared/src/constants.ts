@@ -52,3 +52,6 @@ export const ANNOUNCEMENT_TITLE_MAX_LENGTH = 256;
 
 /** お知らせ本文の最大長（Discord Embed の説明文上限に準拠） */
 export const ANNOUNCEMENT_BODY_MAX_LENGTH = 4096;
+
+/** 埋め込み表示方式の既定値。guild 設定が無い場合に使用する */
+export const DEFAULT_EMBED_VERSION = "v2";

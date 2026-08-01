@@ -1,5 +1,5 @@
-import type { AnnounceTarget, ConfigResult, IChannelConfigRepository } from "@rx-twitter/shared";
-import { DEFAULT_MAX_URLS_PER_MESSAGE, MAX_URLS_PER_MESSAGE_LIMIT } from "@rx-twitter/shared";
+import type { AnnounceTarget, ConfigResult, EmbedVersion, IChannelConfigRepository } from "@rx-twitter/shared";
+import { DEFAULT_EMBED_VERSION, DEFAULT_MAX_URLS_PER_MESSAGE, MAX_URLS_PER_MESSAGE_LIMIT } from "@rx-twitter/shared";
 
 import logger from "@/utils/logger";
 
@@ -128,6 +128,34 @@ export class ChannelConfigService {
     } catch (err) {
       logger.error(`[ChannelConfig] Unexpected error in getMaxUrlsPerMessage for guild ${guildId}:`, err);
       return DEFAULT_MAX_URLS_PER_MESSAGE;
+    }
+  }
+
+  /**
+   * 埋め込みの表示方式を取得する
+   *
+   * 未設定・不正値・設定未作成・Redis 障害時はいずれも既定（v2）へ倒す。
+   * 表示方式はチャンネル許可の可否とは独立した関心のため、
+   * フォールバック方針（FallbackPolicies）の影響を受けない。
+   */
+  async getEmbedVersion(guildId: string): Promise<EmbedVersion> {
+    try {
+      const result = await this.repository.getConfig(guildId);
+
+      if (result.kind !== "found") {
+        return DEFAULT_EMBED_VERSION;
+      }
+
+      const raw = result.data.embedVersion;
+
+      if (raw !== "v1" && raw !== "v2") {
+        return DEFAULT_EMBED_VERSION;
+      }
+
+      return raw;
+    } catch (err) {
+      logger.error(`[ChannelConfig] Unexpected error in getEmbedVersion for guild ${guildId}:`, err);
+      return DEFAULT_EMBED_VERSION;
     }
   }
 
