@@ -4,11 +4,19 @@ const MiB = 1024 * 1024;
 
 /**
  * ブーストレベルごとの Discord 添付ファイル上限
- * Tier0 と Tier1 は同じ 25MiB
+ *
+ * 既定は 10MiB。Discord 公式ドキュメントに
+ * 「The default limit is 10 MiB for all users, but may be higher for users
+ * depending on their Nitro status or by the server's Boost Tier」とある。
+ * 上限が上がるのは Tier2 からで、Tier1 は既定と同じ。
+ *
+ * 上限を高く見積もると、ダウンロードに成功したのち Discord 側で拒否され、
+ * URL へのフォールバックも効かないまま失敗する。低めに倒すと URL 送信で
+ * 済むため、不明な場合は既定へ寄せる。
  */
 const TIER_LIMITS: Record<GuildPremiumTier, number> = {
-  [GuildPremiumTier.None]: 25 * MiB,
-  [GuildPremiumTier.Tier1]: 25 * MiB,
+  [GuildPremiumTier.None]: 10 * MiB,
+  [GuildPremiumTier.Tier1]: 10 * MiB,
   [GuildPremiumTier.Tier2]: 50 * MiB,
   [GuildPremiumTier.Tier3]: 100 * MiB,
 };
