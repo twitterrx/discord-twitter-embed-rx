@@ -1,5 +1,44 @@
 # Changelog
 
+## [3.0.0](https://github.com/rx-twitter/rx-twitter/compare/v2.8.0...v3.0.0) (2026-08-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* **discord:** v2 では動画をダウンロードせず、元の URL を MediaGallery へ直接埋め込む。アップロード上限の影響を受けなくなるため、上限超過による リンクボタンへの退避も発生しない。大きい動画もそのまま表示される。
+* **discord:** 埋め込みの既定表示が Components v2 になる。動画は同じ Container 内へ収まり、これまでの別メッセージ投稿を行わない。スポイラーは ボタン方式からネイティブのぼかしへ変わる。従来の表示に戻す場合は guild 設定の embedVersion を v1 にする。
+* **media:** media_max_file_size を設定していない環境では、添付上限が 5242800 バイトから 24.50MiB 以上へ引き上がる（Tier0 で約 4.9 倍）。これまで URL 送信に回されていた動画がファイルとして添付されるようになり、帯域と ディスク使用量が増える。抑えたい場合は media_max_file_size を明示すること。
+
+### Features
+
+* **config:** GuildConfig に embedVersion を追加する ([d761791](https://github.com/rx-twitter/rx-twitter/commit/d7617911e57c926874e14bdd24bbe789bd4e0548)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **config:** GuildConfig に embedVersion を追加する（[#548](https://github.com/rx-twitter/rx-twitter/issues/548) の 1/4） ([db6dc33](https://github.com/rx-twitter/rx-twitter/commit/db6dc3360d1e56700586e65923ce2380ca2821bc))
+* **discord:** Components v2 のツイート表現を追加する ([5b02a87](https://github.com/rx-twitter/rx-twitter/commit/5b02a87fa3e7b1aa5d84d0ca5c0ac846b81edb84)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **discord:** Components v2 のツイート表現を追加する（[#548](https://github.com/rx-twitter/rx-twitter/issues/548) の 3a） ([ef06236](https://github.com/rx-twitter/rx-twitter/commit/ef06236c1136b173dede38fe67a19b5101d89c94))
+* **discord:** v2 は動画URLを直接埋め込みダウンロードをやめる ([986afa2](https://github.com/rx-twitter/rx-twitter/commit/986afa24cb45f69ad3597da990a18b5bc7db52e2)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **discord:** 動画URLを直接ギャラリーへ埋め込めるようにする ([0f9ef57](https://github.com/rx-twitter/rx-twitter/commit/0f9ef57e853540534ad779fba20a92711aa747e6)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **discord:** 埋め込みを Components v2 で送信する ([4e9e8bc](https://github.com/rx-twitter/rx-twitter/commit/4e9e8bcfe82e6689c13aee271cb12f6eedf5c959)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **media:** 添付上限を guild のブーストレベルから決定する ([a30298a](https://github.com/rx-twitter/rx-twitter/commit/a30298a1c5067f1562c0e789e2a42afcf187d667)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **owner:** 埋め込み方式の使用状況を表示するコマンドを追加する ([af48315](https://github.com/rx-twitter/rx-twitter/commit/af48315734cb7fd1171c943d216682715555321c)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **owner:** 埋め込み方式の使用状況を表示するコマンドを追加する（[#548](https://github.com/rx-twitter/rx-twitter/issues/548) の 4/4） ([a269437](https://github.com/rx-twitter/rx-twitter/commit/a269437835d2ebc00356d9eca7841ae593c70817))
+
+
+### Bug Fixes
+
+* **discord:** v2 ヘッダのリンクを区別できるようにし余白を詰める ([6d8ace7](https://github.com/rx-twitter/rx-twitter/commit/6d8ace7f8bf223887563b72bafae504d314e5452))
+* **discord:** v2 ヘッダのリンクを区別できるようにし余白を詰める ([fa7f4f4](https://github.com/rx-twitter/rx-twitter/commit/fa7f4f4409ff642111bddf8f6bf512f684f0aff1)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **discord:** アイコン未設定のツイートが展開されない問題を修正する ([b732cf8](https://github.com/rx-twitter/rx-twitter/commit/b732cf863fbc647d25ffd791708b93c7459274d6))
+* **discord:** スポイラーを Container 全体へ適用しアイコン無しに対応する ([1af2cd4](https://github.com/rx-twitter/rx-twitter/commit/1af2cd4023616af77e8b8714454ecf4914bd2348)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **discord:** ヘッダと本文を同じ TextDisplay にまとめて余白を詰める ([fe8930b](https://github.com/rx-twitter/rx-twitter/commit/fe8930b6494913284f876205c5abf8cd699b9bb3)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **discord:** 動画のダウンロード失敗を URL へフォールバックする ([d2e5235](https://github.com/rx-twitter/rx-twitter/commit/d2e5235c2889a7aad155b077e89518a7cbfe8a3d)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **discord:** 動画を File ではなく MediaGallery に入れる ([3368446](https://github.com/rx-twitter/rx-twitter/commit/33684462d89d64003c8b7639340128cd46e683fa)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **discord:** 空文字の iconUrl で Embed 生成が失敗する問題を修正する ([fd7795f](https://github.com/rx-twitter/rx-twitter/commit/fd7795f78880e20dd04495dbf167f4905722b8d4)), closes [#583](https://github.com/rx-twitter/rx-twitter/issues/583)
+* **media:** Tier0/Tier1 の添付上限を 10MiB に修正する ([57dc2de](https://github.com/rx-twitter/rx-twitter/commit/57dc2deb3654653bac09490b37b3e06d8af58153)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **media:** 添付上限からマージンを差し引かない ([cb68d3d](https://github.com/rx-twitter/rx-twitter/commit/cb68d3d7b1555788a28054129fce8c1570d06f33)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **owner:** Redis 障害を既定値 v2 と混同せず判定不能として示す ([cf327a8](https://github.com/rx-twitter/rx-twitter/commit/cf327a80f08cf4bb8d94c4954111e1457df7c797)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **owner:** 判定不能を含めた内訳が矛盾しないようにする ([874004d](https://github.com/rx-twitter/rx-twitter/commit/874004d4cf192f1bdc5217ba6da675b6195a9139)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+* **scripts:** プレビューの一時ファイルを送信後に削除する ([5754a93](https://github.com/rx-twitter/rx-twitter/commit/5754a939ea058ee3cfae6befbbd63a2e6ae6211b)), closes [#548](https://github.com/rx-twitter/rx-twitter/issues/548)
+
 ## [2.8.0](https://github.com/rx-twitter/rx-twitter/compare/v2.7.0...v2.8.0) (2026-08-01)
 
 
