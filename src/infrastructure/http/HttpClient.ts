@@ -1,3 +1,4 @@
+import type { ClientRequest } from "node:http";
 import https from "node:https";
 
 import { IFileSizeChecker } from "@/core/services/MediaHandler";
@@ -20,7 +21,26 @@ export class HttpClient implements IFileSizeChecker {
     logger.debug("HTTP HEAD request started", { url });
 
     return new Promise((resolve, reject) => {
-      const req = https.request(url, { method: "HEAD" }, (res) => {
+      // req.setTimeout() はソケットの非アクティブタイムアウトであり、
+      // レスポンス受信後も解除されない。keepAlive でソケットがプールに残ると
+      // 成功済みのリクエストに対して発火してしまうため、明示的に管理する。
+      //
+      // タイマーとリクエストの生成順に依存しないよう、タイマーを先に作り
+      // req は発火時点で遅延参照する。
+      let req: ClientRequest;
+      const timer = setTimeout(() => {
+        req.destroy(new Error(`HTTP HEAD request timed out after ${REQUEST_TIMEOUT_MS}ms`));
+      }, REQUEST_TIMEOUT_MS);
+
+      const settle = (finish: () => void): void => {
+        clearTimeout(timer);
+        finish();
+      };
+
+      req = https.request(url, { method: "HEAD" }, (res) => {
+        // HEAD にボディはないが、明示的に消費してソケットを解放する
+        res.resume();
+
         const duration = Date.now() - startTime;
         const contentLength = res.headers["content-length"];
 
@@ -32,25 +52,23 @@ export class HttpClient implements IFileSizeChecker {
             contentLength: size,
             duration: `${duration}ms`,
           });
-          resolve(size);
+          settle(() => resolve(size));
         } else {
           logger.warn("HTTP HEAD request missing Content-Length header", {
             url,
             statusCode: res.statusCode,
             duration: `${duration}ms`,
           });
-          reject(new Error("Could not get Content-Length Header..."));
+          settle(() => reject(new Error("Could not get Content-Length Header...")));
         }
-      });
-
-      req.setTimeout(REQUEST_TIMEOUT_MS, () => {
-        req.destroy(new Error(`HTTP HEAD request timed out after ${REQUEST_TIMEOUT_MS}ms`));
       });
 
       req.on("error", (err) => {
         const duration = Date.now() - startTime;
-        logger.error("HTTP HEAD request failed", { url, error: err.message, duration: `${duration}ms` });
-        reject(err);
+        settle(() => {
+          logger.error("HTTP HEAD request failed", { url, error: err.message, duration: `${duration}ms` });
+          reject(err);
+        });
       });
       req.end();
     });
@@ -66,7 +84,18 @@ export class HttpClient implements IFileSizeChecker {
     logger.debug("HTTP GET request started", { url });
 
     return new Promise((resolve, reject) => {
-      const req = https
+      // getFileSize と同じ理由でタイマーを明示的に管理する
+      let req: ClientRequest;
+      const timer = setTimeout(() => {
+        req.destroy(new Error(`HTTP GET request timed out after ${REQUEST_TIMEOUT_MS}ms`));
+      }, REQUEST_TIMEOUT_MS);
+
+      const settle = (finish: () => void): void => {
+        clearTimeout(timer);
+        finish();
+      };
+
+      req = https
         .get(url, (res) => {
           let data = "";
           let dataSize = 0;
@@ -89,22 +118,20 @@ export class HttpClient implements IFileSizeChecker {
                 responseSize: data.length,
                 duration: `${duration}ms`,
               });
-              resolve(data);
+              settle(() => resolve(data));
             } else {
               logger.error("HTTP GET request failed", { url, statusCode: res.statusCode, duration: `${duration}ms` });
-              reject(new Error(`Request failed with status ${res.statusCode}`));
+              settle(() => reject(new Error(`Request failed with status ${res.statusCode}`)));
             }
           });
         })
         .on("error", (err) => {
           const duration = Date.now() - startTime;
-          logger.error("HTTP GET request error", { url, error: err.message, duration: `${duration}ms` });
-          reject(err);
+          settle(() => {
+            logger.error("HTTP GET request error", { url, error: err.message, duration: `${duration}ms` });
+            reject(err);
+          });
         });
-
-      req.setTimeout(REQUEST_TIMEOUT_MS, () => {
-        req.destroy(new Error(`HTTP GET request timed out after ${REQUEST_TIMEOUT_MS}ms`));
-      });
     });
   }
 }
