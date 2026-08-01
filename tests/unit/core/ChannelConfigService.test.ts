@@ -185,4 +185,66 @@ describe("ChannelConfigService", () => {
       expect(await service.performHealthCheck()).toBe(true);
     });
   });
+  describe("getEmbedVersion", () => {
+    const service = () => new ChannelConfigService(mockRepo, ALLOW_ALL);
+
+    it("設定があればその値を返す", async () => {
+      vi.mocked(mockRepo.getConfig).mockResolvedValue({
+        kind: "found",
+        data: createGuildConfig({ embedVersion: "v1" }),
+      });
+
+      expect(await service().getEmbedVersion("guild-1")).toBe("v1");
+    });
+
+    it("未設定なら既定の v2 を返す", async () => {
+      vi.mocked(mockRepo.getConfig).mockResolvedValue({
+        kind: "found",
+        data: createGuildConfig(),
+      });
+
+      expect(await service().getEmbedVersion("guild-1")).toBe("v2");
+    });
+
+    it("解釈できない値は既定の v2 に倒す", async () => {
+      vi.mocked(mockRepo.getConfig).mockResolvedValue({
+        kind: "found",
+        data: createGuildConfig({ embedVersion: "v3" as never }),
+      });
+
+      expect(await service().getEmbedVersion("guild-1")).toBe("v2");
+    });
+
+    it("設定が見つからない場合は既定の v2 を返す", async () => {
+      vi.mocked(mockRepo.getConfig).mockResolvedValue({ kind: "not_found" });
+
+      expect(await service().getEmbedVersion("guild-1")).toBe("v2");
+    });
+
+    it("Redis 障害時も既定の v2 を返す", async () => {
+      vi.mocked(mockRepo.getConfig).mockResolvedValue({
+        kind: "error",
+        error: new Error("redis down"),
+      });
+
+      expect(await service().getEmbedVersion("guild-1")).toBe("v2");
+    });
+
+    it("フォールバック方針に関わらず既定は v2", async () => {
+      vi.mocked(mockRepo.getConfig).mockResolvedValue({ kind: "not_found" });
+      const denyService = new ChannelConfigService(mockRepo, {
+        redisDown: "deny",
+        configNotFound: "deny",
+      });
+
+      // チャンネル許可の方針と表示方式は独立した関心
+      expect(await denyService.getEmbedVersion("guild-1")).toBe("v2");
+    });
+
+    it("予期しない例外でも既定の v2 を返す", async () => {
+      vi.mocked(mockRepo.getConfig).mockRejectedValue(new Error("boom"));
+
+      expect(await service().getEmbedVersion("guild-1")).toBe("v2");
+    });
+  });
 });

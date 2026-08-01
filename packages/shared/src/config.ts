@@ -5,6 +5,13 @@
 import type { AnnounceTarget } from "./announcement.js";
 
 /**
+ * 埋め込みの表示方式
+ * - v1: 従来の Embed
+ * - v2: Discord Components v2（Container 等で構成）
+ */
+export type EmbedVersion = "v1" | "v2";
+
+/**
  * Redisに保存されるギルド設定
  */
 export interface GuildConfig {
@@ -24,6 +31,8 @@ export interface GuildConfig {
   maxUrlsPerMessage?: number;
   /** お知らせの配信先設定（未設定時はBot側でオーナーへのDMをデフォルトとする） */
   announceTarget?: AnnounceTarget;
+  /** 埋め込みの表示方式（未設定時はBot側でデフォルトを使用） */
+  embedVersion?: EmbedVersion;
 }
 
 /**
