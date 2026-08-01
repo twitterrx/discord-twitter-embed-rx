@@ -2,17 +2,17 @@ import { APIEmbedField, EmbedBuilder } from "discord.js";
 
 import { Tweet, TweetPollOption } from "@/core/models/Tweet";
 
+import { buildTweetBody, formatPollOptions, truncate } from "./tweetText";
+
 /**
  * Discord Embed作成を担当
  */
 export class DiscordEmbedBuilder {
   private readonly embedColor = 9016025;
-  private readonly quotePrefix = "QT: ";
   private readonly br = "\n";
   private readonly maxTitleLength = 256;
   private readonly maxDescriptionLength = 4096;
   private readonly maxPollFieldLength = 1024;
-  private readonly articleOnlyPattern = /^https?:\/\/(?:www\.)?(?:x|twitter)\.com\/i\/article\/[0-9]+(?:[?#]\S*)?$/;
 
   /**
    * ツイートからDiscord Embedを作成
@@ -42,10 +42,13 @@ export class DiscordEmbedBuilder {
    */
   private createSingleEmbed(tweet: Tweet): EmbedBuilder {
     const embed = new EmbedBuilder()
+      // iconURL は「未指定」か「有効なURL」のみを受け付ける。
+      // 空文字を渡すと例外になるため、無い場合はキー自体を含めない。
+      // FxTwitter の avatar_url は nullable で、Adapter が空文字へ変換するため到達しうる。
       .setAuthor({
         name: tweet.author.name,
         url: tweet.author.url,
-        iconURL: tweet.author.iconUrl,
+        ...(tweet.author.iconUrl ? { iconURL: tweet.author.iconUrl } : {}),
       })
       .setTitle(this.truncateTitle(tweet.article?.title ?? tweet.author.name))
       .setURL(tweet.url)
@@ -65,23 +68,11 @@ export class DiscordEmbedBuilder {
       embed.addFields(this.createPollField(tweet.poll.options));
     }
 
-    // 説明文の作成（引用ツイート情報を含む）
-    const tweetText = tweet.article && this.articleOnlyPattern.test(tweet.text.trim()) ? "" : tweet.text;
-    let description = this.convertMentionsToLinks(tweetText);
-    if (tweet.article) {
-      description +=
-        (description === "" ? "" : this.br + this.br) + this.convertMentionsToLinks(tweet.article.previewText);
-    }
-    if (tweet.quote) {
-      const quoteAuthorLink = this.createMentionLink(tweet.quote.author.id);
-      const quoteTextWithLinks = this.convertMentionsToLinks(tweet.quote.text);
-      const quoteText = this.quotePrefix + quoteAuthorLink + " " + quoteTextWithLinks;
-      const quoteUrl = "(" + tweet.quote.url + ")";
-      description += this.br + this.br + quoteText + this.br + quoteUrl;
-    }
+    // 説明文の作成（引用ツイート情報を含む）。整形ロジックは v2 と共有する
+    const description = buildTweetBody(tweet);
 
     if (description !== "") {
-      embed.setDescription(this.truncateDescription(description));
+      embed.setDescription(truncate(description, this.maxDescriptionLength));
     }
 
     return embed;
@@ -91,10 +82,7 @@ export class DiscordEmbedBuilder {
    * Embedタイトルを最大長に収める（超過時は末尾を省略）
    */
   private truncateTitle(text: string): string {
-    if (text.length <= this.maxTitleLength) {
-      return text;
-    }
-    return text.substring(0, this.maxTitleLength - 3) + "...";
+    return truncate(text, this.maxTitleLength);
   }
 
   /**
@@ -117,72 +105,10 @@ export class DiscordEmbedBuilder {
    * @returns APIEmbedField
    */
   private createPollField(options: TweetPollOption[]): APIEmbedField {
-    const value = options
-      .map((option, index) => {
-        return `${index + 1}. ${option.label} — ${option.votes} votes (${option.percentage}%)`;
-      })
-      .join(this.br);
-
     return {
       inline: false,
       name: ":bar_chart: poll",
-      value: this.truncatePollField(value),
+      value: truncate(formatPollOptions(options), this.maxPollFieldLength),
     };
-  }
-
-  /**
-   * ＠メンションをクリック可能なリンクに変換
-   * @param text 変換対象のテキスト
-   * @returns ＠メンションがリンク化されたテキスト
-   */
-  private convertMentionsToLinks(text: string): string {
-    // URL部分を一時的に抽出してプレースホルダーに置換
-    const urlPattern = /https?:\/\/[^\s]+/g;
-    const urls: string[] = [];
-    const textWithPlaceholders = text.replace(urlPattern, (url) => {
-      urls.push(url);
-      return `__URL_PLACEHOLDER_${urls.length - 1}__`;
-    });
-
-    // @メンションをマークダウンリンクに変換（連続する@の最後のみ変換、全角@にも対応）
-    const transformed = textWithPlaceholders.replace(/([@＠]*)[@＠]([A-Za-z0-9_]{1,15})\b/g, (_, prefix, username) => {
-      return prefix + this.createMentionLink(username);
-    });
-
-    // プレースホルダーを元のURLに戻す
-    return transformed.replace(/__URL_PLACEHOLDER_(\d+)__/g, (_, index) => urls[parseInt(index)]);
-  }
-
-  /**
-   * ユーザー名のMarkdown装飾を無効化したリンクを作成
-   * @param username Xのユーザー名
-   * @returns ユーザーページへのMarkdownリンク
-   */
-  private createMentionLink(username: string): string {
-    return `[\`@${username}\`](https://x.com/${username})`;
-  }
-
-  /**
-   * 説明文を最大長に収める（超過時は末尾を省略）
-   * @param text 説明文
-   * @returns 切り詰められた説明文
-   */
-  private truncateDescription(text: string): string {
-    if (text.length <= this.maxDescriptionLength) {
-      return text;
-    }
-    return text.substring(0, this.maxDescriptionLength - 3) + "...";
-  }
-
-  /**
-   * 投票フィールドを最大長に収める（超過時は末尾を省略）
-   * @param text 投票フィールドの文字列
-   * @returns 切り詰められた投票フィールド
-   */
-  private truncatePollField(text: string): string {
-    if (text.length <= this.maxPollFieldLength) {
-      return text;
-    }
-    return text.substring(0, this.maxPollFieldLength - 3) + "...";
   }
 }

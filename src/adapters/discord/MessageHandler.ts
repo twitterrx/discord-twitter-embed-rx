@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
-import { DEFAULT_MAX_URLS_PER_MESSAGE } from "@rx-twitter/shared";
+import { DEFAULT_EMBED_VERSION, DEFAULT_MAX_URLS_PER_MESSAGE } from "@rx-twitter/shared";
 import {
   ActionRowBuilder,
   AttachmentBuilder,
@@ -13,6 +13,7 @@ import {
   DiscordAPIError,
   Message,
   EmbedBuilder,
+  MessageFlags,
 } from "discord.js";
 
 import { ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
@@ -25,6 +26,8 @@ import { TweetProcessor } from "@/core/services/TweetProcessor";
 import { IReplyLogger } from "@/db/replyLogger";
 import logger from "@/utils/logger";
 
+import { resolveAttachmentLimit } from "./attachmentLimit";
+import { ComponentsV2Builder } from "./ComponentsV2Builder";
 import { DiscordEmbedBuilder } from "./EmbedBuilder";
 
 /**
@@ -63,6 +66,7 @@ export class MessageHandler {
     private readonly processor: TweetProcessor,
     private readonly twitterAdapter: ITwitterAdapter,
     private readonly embedBuilder: DiscordEmbedBuilder,
+    private readonly componentsV2Builder: ComponentsV2Builder,
     private readonly mediaHandler: MediaHandler,
     private readonly fileManager: IFileManager,
     private readonly videoDownloader: IVideoDownloader,
@@ -70,7 +74,9 @@ export class MessageHandler {
     private readonly tmpDirBase: string,
     private readonly channelConfigService?: ChannelConfigService,
     private readonly banService?: BanService,
-    private readonly articlePostService?: ArticlePostService
+    private readonly articlePostService?: ArticlePostService,
+    /** 運用側が設定した添付上限のキャップ。未指定なら guild のブーストレベルのみで決まる */
+    private readonly mediaSizeCap?: number
   ) {}
 
   /**
@@ -313,6 +319,16 @@ export class MessageHandler {
       }
     }
 
+    // guild 設定に応じて表示方式を出し分ける。guild 外（DM 等）は既定に従う
+    const embedVersion = message.guildId
+      ? ((await this.channelConfigService?.getEmbedVersion(message.guildId)) ?? DEFAULT_EMBED_VERSION)
+      : DEFAULT_EMBED_VERSION;
+
+    if (embedVersion === "v2") {
+      await this.sendComponentsV2Message(message, tweet, isSpoiler);
+      return true;
+    }
+
     // Embedを作成
     const embeds = this.embedBuilder.build(tweet);
 
@@ -336,6 +352,33 @@ export class MessageHandler {
     }
 
     return true;
+  }
+
+  /**
+   * Components v2 でツイートを送信する
+   *
+   * 動画を同じ Container 内へ収めるため、v1 のような別メッセージ投稿を行わない。
+   * スポイラーは Container のぼかしで表現するため、ボタンと collector も使わない。
+   */
+  private async sendComponentsV2Message(message: Message, tweet: Tweet, isSpoiler: boolean): Promise<void> {
+    // 動画は元の URL をそのままギャラリーへ埋め込む。
+    // ダウンロードも添付も行わないため、アップロード上限の影響を受けず、
+    // 一時ディレクトリの作成と後始末も不要になる。
+    const videoUrls = this.mediaHandler.filterVideos(tweet.media).map((v) => v.url);
+
+    const container = this.componentsV2Builder.build({ tweet, videoUrls, spoiler: isSpoiler });
+
+    // IsComponentsV2 を立てたメッセージでは content も embeds も使えない
+    const replyMessage = await message.reply({
+      flags: MessageFlags.IsComponentsV2,
+      components: [container],
+      allowedMentions: { repliedUser: false },
+    });
+
+    await this.replyLogger.logReply(message.id, {
+      replyIds: [replyMessage.id],
+      channelId: message.channelId,
+    });
   }
 
   /**
@@ -378,7 +421,7 @@ export class MessageHandler {
 
       try {
         // 動画をダウンロードしてエフェメラルで送信
-        const { attachments, largeVideoUrls } = await this.downloadMediaForSpoiler(tweet);
+        const { attachments, largeVideoUrls } = await this.downloadVideoAttachments(tweet, message.guild);
 
         // 大きすぎるファイルのURLをcontentに含める
         const content =
@@ -423,14 +466,22 @@ export class MessageHandler {
   }
 
   /**
-   * スポイラー用にメディアをダウンロードしてAttachmentBuilderを作成
+   * 動画をダウンロードして AttachmentBuilder を作成する
+   *
+   * v1 のスポイラー展開からのみ呼ばれる。v2 は元の URL を MediaGallery へ
+   * 直接埋め込むため、ダウンロードも添付も行わない。
+   *
    * @param tweet ツイートデータ
-   * @returns AttachmentBuilder配列と大きすぎるファイルのURL配列
+   * @param guild 添付上限の算出に用いるギルド（DM など guild 外では null）
+   * @returns AttachmentBuilder配列と、添付できなかった動画のURL配列
+   *          （上限超過とダウンロード失敗の両方を含む）
    */
-  private async downloadMediaForSpoiler(
-    tweet: Tweet
+  private async downloadVideoAttachments(
+    tweet: Tweet,
+    guild: Message["guild"]
   ): Promise<{ attachments: AttachmentBuilder[]; largeVideoUrls: string[] }> {
     const uniqueTmpDir = path.join(this.tmpDirBase, randomUUID());
+    const maxFileSize = resolveAttachmentLimit(guild, this.mediaSizeCap);
     const attachments: AttachmentBuilder[] = [];
 
     try {
@@ -438,10 +489,10 @@ export class MessageHandler {
 
       // 動画のみファイルサイズでフィルタリング（画像はEmbedのサムネイルでのみ使用するためチェック不要）
       const allVideos = this.mediaHandler.filterVideos(tweet.media);
-      const { downloadable, tooLarge } = await this.mediaHandler.filterBySize(allVideos);
+      const { downloadable, tooLarge } = await this.mediaHandler.filterBySize(allVideos, maxFileSize);
 
       // ダウンロード可能な動画を処理
-      await this.downloadVideos(downloadable, uniqueTmpDir);
+      const failed = await this.downloadVideos(downloadable, uniqueTmpDir);
 
       // ダウンロードしたファイルからAttachmentBuilderを作成
       const files = await this.fileManager.listFiles(uniqueTmpDir);
@@ -450,8 +501,10 @@ export class MessageHandler {
         attachments.push(new AttachmentBuilder(filePath, { name: file }));
       }
 
-      // 大きすぎるファイルのURLを収集
-      const largeVideoUrls = tooLarge.map((v) => v.url);
+      // 添付できなかった動画の URL を収集する。
+      // 上限超過だけでなく、ダウンロードに失敗したものも含める。
+      // 含めないと、その動画は添付にもリンクにも現れず消える。
+      const largeVideoUrls = [...tooLarge, ...failed].map((v) => v.url);
 
       return { attachments, largeVideoUrls };
     } finally {
@@ -479,6 +532,7 @@ export class MessageHandler {
    */
   private async handleMedia(message: Message, tweet: Tweet, isSpoiler: boolean): Promise<string[]> {
     const uniqueTmpDir = path.join(this.tmpDirBase, randomUUID());
+    const maxFileSize = resolveAttachmentLimit(message.guild, this.mediaSizeCap);
     const messageIds: string[] = [];
 
     try {
@@ -487,7 +541,7 @@ export class MessageHandler {
 
       // 動画のみファイルサイズでフィルタリング（画像はEmbedのサムネイルでのみ使用するためチェック不要）
       const allVideos = this.mediaHandler.filterVideos(tweet.media);
-      const { downloadable, tooLarge } = await this.mediaHandler.filterBySize(allVideos);
+      const { downloadable, tooLarge } = await this.mediaHandler.filterBySize(allVideos, maxFileSize);
 
       // ダウンロード可能な動画を処理
       await this.downloadVideos(downloadable, uniqueTmpDir);
@@ -527,7 +581,9 @@ export class MessageHandler {
    * @param videos 動画メディア配列
    * @param tmpDir 一時ディレクトリ
    */
-  private async downloadVideos(videos: Tweet["media"], tmpDir: string): Promise<void> {
+  private async downloadVideos(videos: Tweet["media"], tmpDir: string): Promise<Tweet["media"]> {
+    const failed: Tweet["media"] = [];
+
     await Promise.all(
       videos.map(async (video, index) => {
         const outputPath = path.join(tmpDir, `output${index + 1}.mp4`);
@@ -540,9 +596,13 @@ export class MessageHandler {
             error: error instanceof Error ? error.message : String(error),
             index,
           });
+          // 失敗した動画は添付できないため、呼び出し側で URL へ回せるよう返す
+          failed.push(video);
         }
       })
     );
+
+    return failed;
   }
 
   /**

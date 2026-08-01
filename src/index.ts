@@ -5,6 +5,7 @@ import type { Announcement } from "@rx-twitter/shared";
 import { DASHBOARD_VERSION_FALLBACK, DASHBOARD_VERSION_KEY } from "@rx-twitter/shared";
 import { Client, GatewayIntentBits, Message, Partials, ChannelType } from "discord.js";
 
+import { ComponentsV2Builder } from "@/adapters/discord/ComponentsV2Builder";
 import { DiscordAnnouncementSender } from "@/adapters/discord/DiscordAnnouncementSender";
 import { DiscordEmbedBuilder } from "@/adapters/discord/EmbedBuilder";
 import { MessageHandler } from "@/adapters/discord/MessageHandler";
@@ -111,11 +112,12 @@ logger.info(
 // Core層
 const tweetProcessor = new TweetProcessor();
 const articlePostService = new ArticlePostService(articlePostRepository);
-const mediaHandler = new MediaHandler(httpClient, config.MEDIA_MAX_FILE_SIZE);
+const mediaHandler = new MediaHandler(httpClient);
 
 // Adapter層
 const twitterAdapter = TwitterAdapter.createDefault();
 const embedBuilder = new DiscordEmbedBuilder();
+const componentsV2Builder = new ComponentsV2Builder();
 // Owner Command / Ban System
 const banRepository = new RedisBanRepository();
 const banService = new BanService(banRepository);
@@ -124,6 +126,7 @@ const messageHandler = new MessageHandler(
   tweetProcessor,
   twitterAdapter,
   embedBuilder,
+  componentsV2Builder,
   mediaHandler,
   fileManager,
   videoDownloader,
@@ -131,7 +134,8 @@ const messageHandler = new MessageHandler(
   tmpDir,
   channelConfigService,
   banService,
-  articlePostService
+  articlePostService,
+  config.MEDIA_MAX_FILE_SIZE
 );
 
 // === Create discord bot client ===
@@ -148,7 +152,7 @@ const client = new Client({
 });
 
 // Owner Command Handler
-const ownerCommandHandler = new OwnerCommandHandler(ownerUserId, banService, client);
+const ownerCommandHandler = new OwnerCommandHandler(ownerUserId, banService, client, channelConfigService);
 
 // お知らせ配信（#425 Phase1）
 // ownerUserId は起動時ガードで存在保証済みだが、クロージャ内で型が広がるため const で固定する

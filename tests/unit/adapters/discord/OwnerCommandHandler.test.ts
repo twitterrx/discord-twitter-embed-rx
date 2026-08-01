@@ -6,6 +6,7 @@ vi.mock("@/utils/logger", () => ({
 
 import type { Message } from "discord.js";
 import { OwnerCommandHandler } from "@/adapters/discord/OwnerCommandHandler";
+import type { ChannelConfigService } from "@/core/services/ChannelConfigService";
 import { BanService } from "@/core/services/BanService";
 
 // Collection ライクな Map（.map() / .filter() / .size を生やす）
@@ -60,6 +61,7 @@ const createMockMessage = (overrides: Record<string, unknown> = {}): Message<boo
 describe("OwnerCommandHandler", () => {
   let mockBanService: BanService;
   let mockClient: MockClient;
+  let mockChannelConfigService: ChannelConfigService;
   let handler: OwnerCommandHandler;
 
   const OWNER_ID = "owner-id";
@@ -79,10 +81,14 @@ describe("OwnerCommandHandler", () => {
     } as unknown as BanService;
 
     mockClient = createMockClient();
+    mockChannelConfigService = {
+      getEmbedVersionStatus: vi.fn().mockResolvedValue({ kind: "default", version: "v2" }),
+    } as unknown as ChannelConfigService;
     handler = new OwnerCommandHandler(
       OWNER_ID,
       mockBanService,
       mockClient as unknown as ConstructorParameters<typeof OwnerCommandHandler>[2],
+      mockChannelConfigService,
     );
   });
 
@@ -365,6 +371,114 @@ describe("OwnerCommandHandler", () => {
       const result = await handler.handleMessage(msg);
       expect(result).toBe(true);
       expect(msg.reply).toHaveBeenCalledWith(expect.stringContaining("Redis connection failed"));
+    });
+  });
+  describe("!owner/embed-version (v1/v2 の使用状況)", () => {
+    const addGuild = (id: string, name: string) =>
+      mockClient.guilds.cache.set(id, { id, name, memberCount: 1 } as never);
+
+    const run = async () => {
+      const message = createMockMessage({ content: "!owner/embed-version" });
+      await handler.handleMessage(message);
+      return vi.mocked(message.reply).mock.calls.map((c) => String(c[0])).join("\n");
+    };
+
+    it("参加サーバーが無い場合はその旨を返す", async () => {
+      const text = await run();
+
+      expect(text).toContain("参加していません");
+    });
+
+    it("全体の内訳を集計して表示する", async () => {
+      addGuild("g1", "Alpha");
+      addGuild("g2", "Bravo");
+      addGuild("g3", "Charlie");
+      vi.mocked(mockChannelConfigService.getEmbedVersionStatus)
+        .mockResolvedValueOnce({ kind: "explicit", version: "v2" })
+        .mockResolvedValueOnce({ kind: "explicit", version: "v1" })
+        .mockResolvedValueOnce({ kind: "default", version: "v2" });
+
+      const text = await run();
+
+      expect(text).toContain("v2: 2");
+      expect(text).toContain("v1: 1");
+    });
+
+    it("guild ごとの設定状況を一覧で表示する", async () => {
+      addGuild("g1", "Alpha");
+      addGuild("g2", "Bravo");
+      vi.mocked(mockChannelConfigService.getEmbedVersionStatus)
+        .mockResolvedValueOnce({ kind: "explicit", version: "v1" })
+        .mockResolvedValueOnce({ kind: "explicit", version: "v2" });
+
+      const text = await run();
+
+      expect(text).toContain("Alpha");
+      expect(text).toContain("Bravo");
+      expect(text).toContain("g1");
+      expect(text).toContain("g2");
+    });
+
+    it("件数が多い場合はチャンクに分けて送信する", async () => {
+      for (let i = 0; i < 120; i++) {
+        addGuild(`guild-${i}`, `とても長いサーバー名を持つテストギルド ${i}`);
+      }
+
+      const message = createMockMessage({ content: "!owner/embed-version" });
+      await handler.handleMessage(message);
+
+      expect(vi.mocked(message.reply).mock.calls.length).toBeGreaterThan(1);
+      for (const call of vi.mocked(message.reply).mock.calls) {
+        expect(String(call[0]).length).toBeLessThanOrEqual(2000);
+      }
+    });
+
+    it("Redis 障害の guild を既定値と混同せず判定不能として示す", async () => {
+      addGuild("g1", "Alpha");
+      addGuild("g2", "Bravo");
+      // 実際のサービスは障害時も reject せず unavailable を返す契約
+      vi.mocked(mockChannelConfigService.getEmbedVersionStatus)
+        .mockResolvedValueOnce({ kind: "unavailable" })
+        .mockResolvedValueOnce({ kind: "explicit", version: "v2" });
+
+      const text = await run();
+
+      expect(text).toContain("Bravo");
+      expect(text).toContain("判定不能: 1");
+      // 障害分を v2 として数えない
+      expect(text).toContain("v2: 1");
+      // 判定不能は明示でも既定でもない。内訳の合計が件数と一致すること
+      expect(text).toContain("明示設定: 1件 / 既定: 0件");
+    });
+
+    it("内訳の合計が guild 数と一致する", async () => {
+      addGuild("g1", "Alpha");
+      addGuild("g2", "Bravo");
+      addGuild("g3", "Charlie");
+      vi.mocked(mockChannelConfigService.getEmbedVersionStatus)
+        .mockResolvedValueOnce({ kind: "explicit", version: "v1" })
+        .mockResolvedValueOnce({ kind: "default", version: "v2" })
+        .mockResolvedValueOnce({ kind: "unavailable" });
+
+      const text = await run();
+
+      // 3件 = 明示1 + 既定1 + 判定不能1
+      expect(text).toContain("(3件)");
+      expect(text).toContain("判定不能: 1");
+      expect(text).toContain("明示設定: 1件 / 既定: 1件");
+    });
+
+    it("既定に倒れた guild は明示設定と区別して表示する", async () => {
+      addGuild("g1", "Alpha");
+      vi.mocked(mockChannelConfigService.getEmbedVersionStatus).mockResolvedValue({
+        kind: "default",
+        version: "v2",
+      });
+
+      const text = await run();
+
+      expect(text).toContain("(既定)");
+      expect(text).toContain("明示設定: 0件 / 既定: 1件");
     });
   });
 });
