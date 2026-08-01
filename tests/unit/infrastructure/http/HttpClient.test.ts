@@ -122,6 +122,20 @@ describe("HttpClient", () => {
       expect(logger.error).toHaveBeenCalledTimes(1);
     });
 
+    it("リクエスト生成が同期的に throw してもタイマーを残さない", async () => {
+      vi.mocked(https.request).mockImplementation((() => {
+        throw new Error("Invalid URL");
+      }) as unknown as typeof https.request);
+
+      await expect(client.getFileSize("not-a-url")).rejects.toThrow(/Invalid URL/);
+
+      // タイマーが残ると 10 秒後に undefined.destroy() で TypeError となり
+      // 未処理例外としてプロセスが落ちる
+      expect(vi.getTimerCount()).toBe(0);
+      // 残っていれば undefined.destroy() が投げられ、この行で失敗する
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+
     it("Content-Length がない場合は reject する", async () => {
       const req = createFakeRequest();
       stubRequest(req, createFakeResponse({}));
@@ -168,6 +182,18 @@ describe("HttpClient", () => {
 
       expect(logger.error).not.toHaveBeenCalled();
       expect(req.destroy).not.toHaveBeenCalled();
+    });
+
+    it("リクエスト生成が同期的に throw してもタイマーを残さない", async () => {
+      vi.mocked(https.get).mockImplementation((() => {
+        throw new Error("Invalid URL");
+      }) as unknown as typeof https.get);
+
+      await expect(client.get("not-a-url")).rejects.toThrow(/Invalid URL/);
+
+      expect(vi.getTimerCount()).toBe(0);
+      // 残っていれば undefined.destroy() が投げられ、この行で失敗する
+      await vi.advanceTimersByTimeAsync(30_000);
     });
 
     it("応答が返らない場合はタイムアウトして reject する", async () => {

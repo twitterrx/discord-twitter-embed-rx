@@ -1,4 +1,3 @@
-import type { ClientRequest } from "node:http";
 import https from "node:https";
 
 import { IFileSizeChecker } from "@/core/services/MediaHandler";
@@ -24,20 +23,18 @@ export class HttpClient implements IFileSizeChecker {
       // req.setTimeout() はソケットの非アクティブタイムアウトであり、
       // レスポンス受信後も解除されない。keepAlive でソケットがプールに残ると
       // 成功済みのリクエストに対して発火してしまうため、明示的に管理する。
-      //
-      // タイマーとリクエストの生成順に依存しないよう、タイマーを先に作り
-      // req は発火時点で遅延参照する。
-      let req: ClientRequest;
-      const timer = setTimeout(() => {
-        req.destroy(new Error(`HTTP HEAD request timed out after ${REQUEST_TIMEOUT_MS}ms`));
-      }, REQUEST_TIMEOUT_MS);
+      let settled = false;
+      let timer: NodeJS.Timeout | undefined;
 
       const settle = (finish: () => void): void => {
-        clearTimeout(timer);
+        settled = true;
+        if (timer) {
+          clearTimeout(timer);
+        }
         finish();
       };
 
-      req = https.request(url, { method: "HEAD" }, (res) => {
+      const req = https.request(url, { method: "HEAD" }, (res) => {
         // HEAD にボディはないが、明示的に消費してソケットを解放する
         res.resume();
 
@@ -70,6 +67,15 @@ export class HttpClient implements IFileSizeChecker {
           reject(err);
         });
       });
+
+      // リクエスト生成が同期的に throw した場合はここへ到達せず、タイマーも作られない。
+      // 同期的に解決済みの場合もタイマーは不要。
+      if (!settled) {
+        timer = setTimeout(() => {
+          req.destroy(new Error(`HTTP HEAD request timed out after ${REQUEST_TIMEOUT_MS}ms`));
+        }, REQUEST_TIMEOUT_MS);
+      }
+
       req.end();
     });
   }
@@ -85,17 +91,18 @@ export class HttpClient implements IFileSizeChecker {
 
     return new Promise((resolve, reject) => {
       // getFileSize と同じ理由でタイマーを明示的に管理する
-      let req: ClientRequest;
-      const timer = setTimeout(() => {
-        req.destroy(new Error(`HTTP GET request timed out after ${REQUEST_TIMEOUT_MS}ms`));
-      }, REQUEST_TIMEOUT_MS);
+      let settled = false;
+      let timer: NodeJS.Timeout | undefined;
 
       const settle = (finish: () => void): void => {
-        clearTimeout(timer);
+        settled = true;
+        if (timer) {
+          clearTimeout(timer);
+        }
         finish();
       };
 
-      req = https
+      const req = https
         .get(url, (res) => {
           let data = "";
           let dataSize = 0;
@@ -132,6 +139,13 @@ export class HttpClient implements IFileSizeChecker {
             reject(err);
           });
         });
+
+      // リクエスト生成が同期的に throw した場合はここへ到達せず、タイマーも作られない
+      if (!settled) {
+        timer = setTimeout(() => {
+          req.destroy(new Error(`HTTP GET request timed out after ${REQUEST_TIMEOUT_MS}ms`));
+        }, REQUEST_TIMEOUT_MS);
+      }
     });
   }
 }
