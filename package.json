@@ -1,6 +1,6 @@
 {
   "name": "rx-twitter",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "description": "Twitter/Xの投稿URLをDiscord上で見やすいEmbedに展開するBot",
   "type": "module",
   "main": "index.js",
