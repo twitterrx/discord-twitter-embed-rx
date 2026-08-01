@@ -86,9 +86,10 @@ describe("ComponentsV2Builder", () => {
     it("添付済み動画を attachment:// で Container 内に含める", () => {
       const json = buildJson({ tweet: createMockTweet(), attachedFileNames: ["output1.mp4"] });
 
-      const files = componentsOf(json, ComponentType.File);
-      expect(files).toHaveLength(1);
-      expect(JSON.stringify(files[0])).toContain("attachment://output1.mp4");
+      // File ではなく MediaGallery に入れる（再生可能にするため）
+      const galleries = componentsOf(json, ComponentType.MediaGallery);
+      expect(galleries).toHaveLength(1);
+      expect(JSON.stringify(galleries[0])).toContain("attachment://output1.mp4");
     });
 
     it("上限超過の動画はリンクボタンにする", () => {
@@ -269,6 +270,46 @@ describe("ComponentsV2Builder", () => {
 
       const sections = componentsOf(json, ComponentType.Section);
       expect(JSON.stringify(sections[0])).toContain("@test_user");
+    });
+  });
+  describe("動画の埋め込み方", () => {
+    it("添付動画を MediaGallery に入れる", () => {
+      const json = buildJson({ tweet: createMockTweet({ media: [] }), attachedFileNames: ["output1.mp4"] });
+
+      // File はファイルカードとして描画され、再生できない。
+      // Container 内で再生させるには MediaGallery に入れる必要がある。
+      const galleries = componentsOf(json, ComponentType.MediaGallery);
+      expect(galleries).toHaveLength(1);
+      expect(JSON.stringify(galleries[0])).toContain("attachment://output1.mp4");
+    });
+
+    it("File コンポーネントを使わない", () => {
+      const json = buildJson({ tweet: createMockTweet({ media: [] }), attachedFileNames: ["output1.mp4"] });
+
+      expect(componentsOf(json, ComponentType.File)).toHaveLength(0);
+    });
+
+    it("画像と動画を1つの MediaGallery にまとめる", () => {
+      const tweet = createMockTweet({
+        media: [{ url: "https://e.test/1.jpg", thumbnailUrl: "https://e.test/1.jpg", type: "photo" }],
+      });
+      const json = buildJson({ tweet, attachedFileNames: ["output1.mp4"] });
+
+      const galleries = componentsOf(json, ComponentType.MediaGallery);
+      expect(galleries).toHaveLength(1);
+      const content = JSON.stringify(galleries[0]);
+      expect(content).toContain("1.jpg");
+      expect(content).toContain("attachment://output1.mp4");
+    });
+
+    it("動画にも spoiler を適用する", () => {
+      const json = buildJson({
+        tweet: createMockTweet({ media: [] }),
+        attachedFileNames: ["output1.mp4"],
+        spoiler: true,
+      });
+
+      expect(JSON.stringify(componentsOf(json, ComponentType.MediaGallery))).toContain('"spoiler":true');
     });
   });
 });

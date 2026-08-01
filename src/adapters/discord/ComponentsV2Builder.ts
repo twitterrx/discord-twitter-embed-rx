@@ -3,7 +3,6 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ContainerBuilder,
-  FileBuilder,
   MediaGalleryBuilder,
   MediaGalleryItemBuilder,
   SectionBuilder,
@@ -61,13 +60,9 @@ export class ComponentsV2Builder {
       container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### :bar_chart: poll\n${poll}`));
     }
 
-    const gallery = this.createGallery(tweet, spoiler);
+    const gallery = this.createGallery(tweet, attachedFileNames, spoiler);
     if (gallery) {
       container.addMediaGalleryComponents(gallery);
-    }
-
-    for (const fileName of attachedFileNames) {
-      container.addFileComponents(new FileBuilder().setURL(`attachment://${fileName}`).setSpoiler(spoiler));
     }
 
     const linkRow = this.createOversizedVideoRow(oversizedVideoUrls);
@@ -127,12 +122,16 @@ export class ComponentsV2Builder {
    * 従来は同一URLの Embed を並べて Discord のギャラリー結合に頼っていたが、
    * v2 では MediaGallery で明示的に表現できる。
    */
-  private createGallery(tweet: Tweet, spoiler: boolean): MediaGalleryBuilder | undefined {
+  private createGallery(tweet: Tweet, attachedFileNames: string[], spoiler: boolean): MediaGalleryBuilder | undefined {
     const urls = tweet.media.filter((m) => m.type === "photo").map((m) => m.thumbnailUrl);
 
     if (tweet.article?.imageUrl) {
       urls.unshift(tweet.article.imageUrl);
     }
+
+    // 動画も同じギャラリーへ入れる。File はファイルカードとして描画され
+    // 再生できないため、Container 内で再生させるには MediaGallery を使う。
+    urls.push(...attachedFileNames.map((name) => `attachment://${name}`));
 
     if (urls.length === 0) {
       return undefined;
