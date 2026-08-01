@@ -1,3 +1,4 @@
+import type { EmbedVersion } from "@rx-twitter/shared";
 import type { Client, Message } from "discord.js";
 
 import type { BanEntry } from "@/core/models/BanEntry";
@@ -291,29 +292,36 @@ export class OwnerCommandHandler {
       return;
     }
 
-    // 1 guild の取得失敗で全体が落ちないよう、個別に握って「不明」として扱う
+    // getEmbedVersion() は障害時も既定値へ倒すため、明示設定と障害を区別できない。
+    // 運用状況の確認では両者の混同が事実と異なる報告になるため status を使う。
     const entries = await Promise.all(
-      guilds.map(async (g: { id: string; name: string }) => {
-        try {
-          return { id: g.id, name: g.name, version: await this.channelConfigService.getEmbedVersion(g.id) };
-        } catch (error) {
-          logger.error("[Owner] Failed to get embed version", {
-            guildId: g.id,
-            error: error instanceof Error ? error.message : String(error),
-          });
-          return { id: g.id, name: g.name, version: "不明" as const };
-        }
-      })
+      guilds.map(async (g: { id: string; name: string }) => ({
+        id: g.id,
+        name: g.name,
+        status: await this.channelConfigService.getEmbedVersionStatus(g.id),
+      }))
     );
 
-    const count = (v: string) => entries.filter((e) => e.version === v).length;
+    const versionOf = (e: (typeof entries)[number]) => (e.status.kind === "unavailable" ? undefined : e.status.version);
+    const count = (v: EmbedVersion) => entries.filter((e) => versionOf(e) === v).length;
+    const unavailable = entries.filter((e) => e.status.kind === "unavailable").length;
+    const explicit = entries.filter((e) => e.status.kind === "explicit").length;
+
     const header = [
       `**埋め込み方式の使用状況 (${entries.length}件)**`,
-      `v2: ${count("v2")} / v1: ${count("v1")}` + (count("不明") > 0 ? ` / 不明: ${count("不明")}` : ""),
+      `v2: ${count("v2")} / v1: ${count("v1")}` + (unavailable > 0 ? ` / 判定不能: ${unavailable}` : ""),
+      `明示設定: ${explicit}件（残りは既定）`,
       "",
     ].join("\n");
 
-    const lines = entries.map((e) => `\`${e.id}\` — ${e.name} → **${e.version}**`);
+    const label = (e: (typeof entries)[number]) => {
+      if (e.status.kind === "unavailable") {
+        return "判定不能";
+      }
+      return e.status.kind === "explicit" ? `${e.status.version}` : `${e.status.version} (既定)`;
+    };
+
+    const lines = entries.map((e) => `\`${e.id}\` — ${e.name} → **${label(e)}**`);
 
     const chunks = this.chunkText(header + lines.join("\n"), 1900);
     for (const chunk of chunks) {

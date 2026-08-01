@@ -82,7 +82,7 @@ describe("OwnerCommandHandler", () => {
 
     mockClient = createMockClient();
     mockChannelConfigService = {
-      getEmbedVersion: vi.fn().mockResolvedValue("v2"),
+      getEmbedVersionStatus: vi.fn().mockResolvedValue({ kind: "default", version: "v2" }),
     } as unknown as ChannelConfigService;
     handler = new OwnerCommandHandler(
       OWNER_ID,
@@ -393,10 +393,10 @@ describe("OwnerCommandHandler", () => {
       addGuild("g1", "Alpha");
       addGuild("g2", "Bravo");
       addGuild("g3", "Charlie");
-      vi.mocked(mockChannelConfigService.getEmbedVersion)
-        .mockResolvedValueOnce("v2")
-        .mockResolvedValueOnce("v1")
-        .mockResolvedValueOnce("v2");
+      vi.mocked(mockChannelConfigService.getEmbedVersionStatus)
+        .mockResolvedValueOnce({ kind: "explicit", version: "v2" })
+        .mockResolvedValueOnce({ kind: "explicit", version: "v1" })
+        .mockResolvedValueOnce({ kind: "default", version: "v2" });
 
       const text = await run();
 
@@ -407,9 +407,9 @@ describe("OwnerCommandHandler", () => {
     it("guild ごとの設定状況を一覧で表示する", async () => {
       addGuild("g1", "Alpha");
       addGuild("g2", "Bravo");
-      vi.mocked(mockChannelConfigService.getEmbedVersion)
-        .mockResolvedValueOnce("v1")
-        .mockResolvedValueOnce("v2");
+      vi.mocked(mockChannelConfigService.getEmbedVersionStatus)
+        .mockResolvedValueOnce({ kind: "explicit", version: "v1" })
+        .mockResolvedValueOnce({ kind: "explicit", version: "v2" });
 
       const text = await run();
 
@@ -433,17 +433,33 @@ describe("OwnerCommandHandler", () => {
       }
     });
 
-    it("設定の取得に失敗した guild があっても他を表示する", async () => {
+    it("Redis 障害の guild を既定値と混同せず判定不能として示す", async () => {
       addGuild("g1", "Alpha");
       addGuild("g2", "Bravo");
-      vi.mocked(mockChannelConfigService.getEmbedVersion)
-        .mockRejectedValueOnce(new Error("redis down"))
-        .mockResolvedValueOnce("v2");
+      // 実際のサービスは障害時も reject せず unavailable を返す契約
+      vi.mocked(mockChannelConfigService.getEmbedVersionStatus)
+        .mockResolvedValueOnce({ kind: "unavailable" })
+        .mockResolvedValueOnce({ kind: "explicit", version: "v2" });
 
       const text = await run();
 
       expect(text).toContain("Bravo");
-      expect(text).toContain("不明");
+      expect(text).toContain("判定不能: 1");
+      // 障害分を v2 として数えない
+      expect(text).toContain("v2: 1");
+    });
+
+    it("既定に倒れた guild は明示設定と区別して表示する", async () => {
+      addGuild("g1", "Alpha");
+      vi.mocked(mockChannelConfigService.getEmbedVersionStatus).mockResolvedValue({
+        kind: "default",
+        version: "v2",
+      });
+
+      const text = await run();
+
+      expect(text).toContain("(既定)");
+      expect(text).toContain("明示設定: 0件");
     });
   });
 });
