@@ -28,8 +28,11 @@ describe("ComponentsV2Builder", () => {
 
     const sections = componentsOf(json, ComponentType.Section);
     expect(sections).toHaveLength(1);
-    expect(JSON.stringify(sections[0])).toContain(tweet.author.name);
-    expect(JSON.stringify(sections[0])).toContain(tweet.url);
+    // author.name は "表示名(@handle)" 形式。ヘッダでは分割して表示する
+    const displayName = tweet.author.name.replace(/\(@[^)]+\)$/, "");
+    expect(JSON.stringify(sections[0])).toContain(displayName);
+    expect(JSON.stringify(sections[0])).toContain(`@${tweet.author.id}`);
+    expect(JSON.stringify(sections[0])).toContain(tweet.author.url);
   });
 
   it("本文とメトリクスを TextDisplay として持つ", () => {
@@ -166,8 +169,10 @@ describe("ComponentsV2Builder", () => {
 
     it("著者名は失われない", () => {
       const json = buildJson({ tweet: noIcon() });
+      const displayName = noIcon().author.name.replace(/\(@[^)]+\)$/, "");
 
-      expect(allText(json)).toContain(noIcon().author.name);
+      expect(allText(json)).toContain(displayName);
+      expect(allText(json)).toContain(`@${noIcon().author.id}`);
     });
 
     it("Section を使わずヘッダを表現する", () => {
@@ -175,6 +180,52 @@ describe("ComponentsV2Builder", () => {
 
       expect(componentsOf(json, ComponentType.Section)).toHaveLength(0);
       expect(componentsOf(json, ComponentType.TextDisplay).length).toBeGreaterThanOrEqual(2);
+    });
+  });
+  describe("ヘッダとフッタのリンク", () => {
+    it("ヘッダのリンク先はアカウントのみにする", () => {
+      const tweet = createMockTweet();
+      const json = buildJson({ tweet });
+
+      const sections = componentsOf(json, ComponentType.Section);
+      const header = JSON.stringify(sections[0]);
+
+      // 表示が同一でリンク先だけ違う行を並べない
+      expect(header).toContain(tweet.author.url);
+      expect(header).not.toContain(tweet.url);
+    });
+
+    it("ポストへのリンクはフッタに置き、それと分かる文言にする", () => {
+      const tweet = createMockTweet();
+      const texts = componentsOf(buildJson({ tweet }), ComponentType.TextDisplay);
+      const footer = JSON.stringify(texts[texts.length - 1]);
+
+      expect(footer).toContain(tweet.url);
+      expect(footer).toContain("ポストを開く");
+    });
+
+    it("通常のポストでは見出しを使わない", () => {
+      const json = buildJson({ tweet: createMockTweet() });
+
+      // ### は前後に余白を作るため本文との間隔が開く
+      expect(allText(json)).not.toContain("###");
+    });
+
+    it("記事付きポストではタイトルを見出しにしてポストへリンクする", () => {
+      const tweet = createMockTweet({
+        article: { id: "1", title: "記事タイトル", previewText: "概要", imageUrl: "" } as never,
+      });
+      const json = buildJson({ tweet });
+
+      expect(allText(json)).toContain("### [記事タイトル](" + tweet.url + ")");
+    });
+
+    it("アイコンが無くてもフッタのポストリンクは失われない", () => {
+      const tweet = createMockTweet({ author: { ...createMockTweet().author, iconUrl: "" } });
+      const json = buildJson({ tweet });
+
+      expect(allText(json)).toContain(tweet.url);
+      expect(allText(json)).toContain("ポストを開く");
     });
   });
 });

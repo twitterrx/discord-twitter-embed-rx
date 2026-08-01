@@ -95,11 +95,16 @@ export class ComponentsV2Builder {
    * FxTwitter の avatar_url は nullable で、Adapter が空文字へ変換するため到達しうる。
    */
   private addHeader(container: ContainerBuilder, tweet: Tweet): void {
-    const title = tweet.article?.title ?? tweet.author.name;
-    const heading = truncate(
-      `### [${title}](${tweet.url})\n[${tweet.author.name}](${tweet.author.url})`,
-      MAX_POLL_LENGTH
-    );
+    // 表示名と handle を分ける。author.name は "表示名(@handle)" 形式のため
+    // そのまま使うとアカウント行とポスト行が同じ文字列になり、リンク先の違いが
+    // 見た目で判別できない。
+    const displayName = tweet.author.name.replace(/\(@[^)]+\)$/, "");
+    const author = `**${displayName}** [@${tweet.author.id}](${tweet.author.url})`;
+
+    // 見出しは記事付きポストのタイトルにのみ使う。
+    // 通常のポストで ### を使うと前後に余白が生まれ、本文との間隔が開く。
+    const lines = tweet.article?.title ? [`### [${tweet.article.title}](${tweet.url})`, author] : [author];
+    const heading = truncate(lines.join("\n"), MAX_POLL_LENGTH);
 
     if (!tweet.author.iconUrl) {
       container.addTextDisplayComponents(new TextDisplayBuilder().setContent(heading));
@@ -160,11 +165,14 @@ export class ComponentsV2Builder {
    */
   private createMetrics(tweet: Tweet): string {
     const unixSeconds = Math.floor(tweet.timestamp.getTime() / 1000);
+    // ポストへのリンクはここに置く。ヘッダのアカウントリンクと役割が
+    // 見た目で区別できるよう、文言で何へ飛ぶかを示す。
     return [
       `:arrow_right_hook: ${tweet.metrics.replies}`,
       `:hearts: ${tweet.metrics.likes}`,
       `:arrows_counterclockwise: ${tweet.metrics.retweets}`,
       `<t:${unixSeconds}:f>`,
+      `[ポストを開く](${tweet.url})`,
     ].join("　");
   }
 }
