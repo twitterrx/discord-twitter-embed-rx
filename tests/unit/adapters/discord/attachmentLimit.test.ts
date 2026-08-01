@@ -11,13 +11,15 @@ const guildWith = (premiumTier: GuildPremiumTier) =>
 
 describe("resolveAttachmentLimit", () => {
   describe("premiumTier による上限", () => {
+    // 配列行だと %d が tier の enum 値（0〜3）を拾い、MiB が表示されない。
+    // 失敗時に意味のある名前が出るようオブジェクト行で参照する。
     it.each([
-      ["None", GuildPremiumTier.None, 10],
-      ["Tier1", GuildPremiumTier.Tier1, 10],
-      ["Tier2", GuildPremiumTier.Tier2, 50],
-      ["Tier3", GuildPremiumTier.Tier3, 100],
-    ])("%s は %d MiB からマージンを引いた値", (_name, tier, mib) => {
-      expect(resolveAttachmentLimit(guildWith(tier as GuildPremiumTier))).toBe(mib * MiB);
+      { name: "None", tier: GuildPremiumTier.None, mib: 10 },
+      { name: "Tier1", tier: GuildPremiumTier.Tier1, mib: 10 },
+      { name: "Tier2", tier: GuildPremiumTier.Tier2, mib: 50 },
+      { name: "Tier3", tier: GuildPremiumTier.Tier3, mib: 100 },
+    ])("$name は $mib MiB をそのまま返す", ({ tier, mib }) => {
+      expect(resolveAttachmentLimit(guildWith(tier))).toBe(mib * MiB);
     });
 
     it("guild が null の場合は Tier0 相当として扱う", () => {
