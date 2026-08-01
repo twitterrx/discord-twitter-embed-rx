@@ -467,9 +467,14 @@ export class MessageHandler {
 
   /**
    * 動画をダウンロードして AttachmentBuilder を作成する
-   * v1 のスポイラー展開と v2 の Container 添付の両方で使う
+   *
+   * v1 のスポイラー展開からのみ呼ばれる。v2 は元の URL を MediaGallery へ
+   * 直接埋め込むため、ダウンロードも添付も行わない。
+   *
    * @param tweet ツイートデータ
-   * @returns AttachmentBuilder配列と大きすぎるファイルのURL配列
+   * @param guild 添付上限の算出に用いるギルド（DM など guild 外では null）
+   * @returns AttachmentBuilder配列と、添付できなかった動画のURL配列
+   *          （上限超過とダウンロード失敗の両方を含む）
    */
   private async downloadVideoAttachments(
     tweet: Tweet,
