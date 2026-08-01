@@ -447,6 +447,25 @@ describe("OwnerCommandHandler", () => {
       expect(text).toContain("判定不能: 1");
       // 障害分を v2 として数えない
       expect(text).toContain("v2: 1");
+      // 判定不能は明示でも既定でもない。内訳の合計が件数と一致すること
+      expect(text).toContain("明示設定: 1件 / 既定: 0件");
+    });
+
+    it("内訳の合計が guild 数と一致する", async () => {
+      addGuild("g1", "Alpha");
+      addGuild("g2", "Bravo");
+      addGuild("g3", "Charlie");
+      vi.mocked(mockChannelConfigService.getEmbedVersionStatus)
+        .mockResolvedValueOnce({ kind: "explicit", version: "v1" })
+        .mockResolvedValueOnce({ kind: "default", version: "v2" })
+        .mockResolvedValueOnce({ kind: "unavailable" });
+
+      const text = await run();
+
+      // 3件 = 明示1 + 既定1 + 判定不能1
+      expect(text).toContain("(3件)");
+      expect(text).toContain("判定不能: 1");
+      expect(text).toContain("明示設定: 1件 / 既定: 1件");
     });
 
     it("既定に倒れた guild は明示設定と区別して表示する", async () => {
@@ -459,7 +478,7 @@ describe("OwnerCommandHandler", () => {
       const text = await run();
 
       expect(text).toContain("(既定)");
-      expect(text).toContain("明示設定: 0件");
+      expect(text).toContain("明示設定: 0件 / 既定: 1件");
     });
   });
 });

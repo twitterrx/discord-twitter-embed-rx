@@ -306,11 +306,13 @@ export class OwnerCommandHandler {
     const count = (v: EmbedVersion) => entries.filter((e) => versionOf(e) === v).length;
     const unavailable = entries.filter((e) => e.status.kind === "unavailable").length;
     const explicit = entries.filter((e) => e.status.kind === "explicit").length;
+    const byDefault = entries.filter((e) => e.status.kind === "default").length;
 
     const header = [
       `**埋め込み方式の使用状況 (${entries.length}件)**`,
       `v2: ${count("v2")} / v1: ${count("v1")}` + (unavailable > 0 ? ` / 判定不能: ${unavailable}` : ""),
-      `明示設定: ${explicit}件（残りは既定）`,
+      // 判定不能は明示でも既定でもないため、個別に数えて内訳を閉じる
+      `明示設定: ${explicit}件 / 既定: ${byDefault}件`,
       "",
     ].join("\n");
 
