@@ -494,7 +494,7 @@ export class MessageHandler {
       const { downloadable, tooLarge } = await this.mediaHandler.filterBySize(allVideos, maxFileSize);
 
       // ダウンロード可能な動画を処理
-      await this.downloadVideos(downloadable, uniqueTmpDir);
+      const failed = await this.downloadVideos(downloadable, uniqueTmpDir);
 
       // ダウンロードしたファイルからAttachmentBuilderを作成
       const files = await this.fileManager.listFiles(uniqueTmpDir);
@@ -503,8 +503,10 @@ export class MessageHandler {
         attachments.push(new AttachmentBuilder(filePath, { name: file }));
       }
 
-      // 大きすぎるファイルのURLを収集
-      const largeVideoUrls = tooLarge.map((v) => v.url);
+      // 添付できなかった動画の URL を収集する。
+      // 上限超過だけでなく、ダウンロードに失敗したものも含める。
+      // 含めないと、その動画は添付にもリンクにも現れず消える。
+      const largeVideoUrls = [...tooLarge, ...failed].map((v) => v.url);
 
       return { attachments, largeVideoUrls };
     } finally {
@@ -581,7 +583,9 @@ export class MessageHandler {
    * @param videos 動画メディア配列
    * @param tmpDir 一時ディレクトリ
    */
-  private async downloadVideos(videos: Tweet["media"], tmpDir: string): Promise<void> {
+  private async downloadVideos(videos: Tweet["media"], tmpDir: string): Promise<Tweet["media"]> {
+    const failed: Tweet["media"] = [];
+
     await Promise.all(
       videos.map(async (video, index) => {
         const outputPath = path.join(tmpDir, `output${index + 1}.mp4`);
@@ -594,9 +598,13 @@ export class MessageHandler {
             error: error instanceof Error ? error.message : String(error),
             index,
           });
+          // 失敗した動画は添付できないため、呼び出し側で URL へ回せるよう返す
+          failed.push(video);
         }
       })
     );
+
+    return failed;
   }
 
   /**

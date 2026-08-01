@@ -18,11 +18,19 @@
  *   - トークンは環境変数からのみ読む。ファイルへ書き出さない
  */
 
-import { Client, GatewayIntentBits, MessageFlags } from "discord.js";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+
+import { AttachmentBuilder, Client, GatewayIntentBits, MessageFlags } from "discord.js";
 
 import { ComponentsV2Builder } from "../dist/adapters/discord/ComponentsV2Builder.js";
 import { DiscordEmbedBuilder } from "../dist/adapters/discord/EmbedBuilder.js";
 import { TwitterAdapter } from "../dist/adapters/twitter/TwitterAdapter.js";
+import { resolveAttachmentLimit } from "../dist/adapters/discord/attachmentLimit.js";
+import { HttpClient } from "../dist/infrastructure/http/HttpClient.js";
+import { VideoDownloader } from "../dist/infrastructure/http/VideoDownloader.js";
 
 const token = process.env.DISCORD_TOKEN;
 const channelId = process.env.CHANNEL_ID;
@@ -119,6 +127,46 @@ const resolveTargets = async () => {
   return only ? patterns.filter((_, i) => i + 1 === only) : patterns;
 };
 
+/**
+ * 動画を本番同様にダウンロードして添付を用意する
+ *
+ * 主目的である「動画が Container 内へ収まる」レイアウトは、実際に添付しないと
+ * 確認できない。上限は Tier0 相当（10MiB）で判定する。
+ */
+const prepareVideos = async (tweet) => {
+  const videos = (tweet.media ?? []).filter((m) => m.type === "video");
+  if (videos.length === 0) {
+    return { attachments: [], oversized: [] };
+  }
+
+  const tmpDir = path.join(os.tmpdir(), `rxtwitter-preview-${randomUUID()}`);
+  await fs.mkdir(tmpDir, { recursive: true });
+
+  const limit = resolveAttachmentLimit(null);
+  const httpClient = new HttpClient();
+  const downloader = new VideoDownloader();
+  const attachments = [];
+  const oversized = [];
+
+  for (const [i, video] of videos.entries()) {
+    try {
+      const size = await httpClient.getFileSize(video.url);
+      if (size > limit) {
+        oversized.push(video.url);
+        continue;
+      }
+      const out = path.join(tmpDir, `output${i + 1}.mp4`);
+      await downloader.download(video.url, out);
+      attachments.push(new AttachmentBuilder(out, { name: `output${i + 1}.mp4` }));
+    } catch (e) {
+      console.warn(`  動画の準備に失敗したためリンクへ回します: ${e instanceof Error ? e.message : String(e)}`);
+      oversized.push(video.url);
+    }
+  }
+
+  return { attachments, oversized };
+};
+
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 const v2 = new ComponentsV2Builder();
 const v1 = new DiscordEmbedBuilder();
@@ -140,13 +188,19 @@ client.once("clientReady", async () => {
       // v1（従来の Embed）
       await channel.send({ content: "**v1**", embeds: v1.build(p.tweet) });
 
-      // v2（Components v2）
+      // v2（Components v2）。実ツイートの動画は本番同様に添付して確認する
+      const { attachments, oversized } = await prepareVideos(p.tweet);
       const container = v2.build({
         tweet: p.tweet,
         spoiler: p.spoiler ?? false,
-        oversizedVideoUrls: p.oversizedVideoUrls ?? [],
+        attachedFileNames: attachments.map((a) => a.name),
+        oversizedVideoUrls: [...(p.oversizedVideoUrls ?? []), ...oversized],
       });
-      await channel.send({ flags: MessageFlags.IsComponentsV2, components: [container] });
+      await channel.send({
+        flags: MessageFlags.IsComponentsV2,
+        components: [container],
+        files: attachments,
+      });
 
       console.log(`  送信: ${p.name}`);
       await new Promise((r) => setTimeout(r, 1200));

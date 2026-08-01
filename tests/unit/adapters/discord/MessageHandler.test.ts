@@ -400,12 +400,11 @@ describe("MessageHandler", () => {
         videoDownloader,
         replyLogger,
         "/tmp",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         {
           isChannelAllowed: vi.fn().mockResolvedValue(true),
           getMaxUrlsPerMessage: vi.fn().mockResolvedValue(3),
           getEmbedVersion: vi.fn().mockResolvedValue("v1"),
-        } as any,
+        } as unknown as ChannelConfigService,
         undefined,
         articlePostService,
       );
@@ -510,8 +509,7 @@ describe("MessageHandler", () => {
         isChannelAllowed: vi.fn().mockResolvedValue(true),
         getMaxUrlsPerMessage: vi.fn().mockResolvedValue(3),
         getEmbedVersion: vi.fn().mockResolvedValue(embedVersion),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any;
+      } as unknown as ChannelConfigService;
 
       const h = new MessageHandler(
         processor,
@@ -593,8 +591,7 @@ describe("MessageHandler", () => {
         isChannelAllowed: vi.fn().mockResolvedValue(true),
         getMaxUrlsPerMessage: vi.fn().mockResolvedValue(3),
         getEmbedVersion: vi.fn().mockResolvedValue("v2"),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any;
+      } as unknown as ChannelConfigService;
 
       vi.mocked(processor.categorizeBySpoiler).mockReturnValue({
         normal: [],
@@ -628,6 +625,46 @@ describe("MessageHandler", () => {
       expect(payload.flags).toBe(MessageFlags.IsComponentsV2);
       // v1 のボタン方式で使う collector は張らない
       expect(replyMessage.createMessageComponentCollector).not.toHaveBeenCalled();
+    });
+  });
+  describe("handleMessage - 動画のダウンロード失敗", () => {
+    it("失敗した動画は URL としてリンクに回す", async () => {
+      const replyMessage = createMockReplyMessage();
+      const message = createMockMessage({
+        reply: vi.fn().mockResolvedValue(replyMessage),
+        guild: { premiumTier: 0 },
+      });
+      const video = { url: "https://v.test/1.mp4", thumbnailUrl: "https://v.test/1.jpg", type: "video" as const };
+
+      vi.mocked(twitterAdapter.fetchTweet).mockResolvedValue(createMockTweet({ media: [video] }));
+      vi.mocked(mediaHandler.filterBySize).mockResolvedValue({ downloadable: [video], tooLarge: [] });
+      // ダウンロード自体が失敗する
+      vi.mocked(videoDownloader.download).mockRejectedValue(new Error("network error"));
+
+      const h = new MessageHandler(
+        processor,
+        twitterAdapter,
+        embedBuilder,
+        componentsV2Builder,
+        mediaHandler,
+        fileManager,
+        videoDownloader,
+        replyLogger,
+        "/tmp",
+        {
+          isChannelAllowed: vi.fn().mockResolvedValue(true),
+          getMaxUrlsPerMessage: vi.fn().mockResolvedValue(3),
+          getEmbedVersion: vi.fn().mockResolvedValue("v2"),
+        } as unknown as ChannelConfigService,
+        undefined,
+        articlePostService,
+      );
+
+      await h.handleMessage(createMockClient(), message);
+
+      // 添付にもリンクにも現れず消える、という状態にしない
+      const payload = vi.mocked(message.reply).mock.calls[0][0] as Record<string, unknown>;
+      expect(JSON.stringify(payload.components)).toContain(video.url);
     });
   });
 });
