@@ -136,7 +136,7 @@ const resolveTargets = async () => {
 const prepareVideos = async (tweet) => {
   const videos = (tweet.media ?? []).filter((m) => m.type === "video");
   if (videos.length === 0) {
-    return { attachments: [], oversized: [] };
+    return { attachments: [], oversized: [], cleanup: async () => {} };
   }
 
   const tmpDir = path.join(os.tmpdir(), `rxtwitter-preview-${randomUUID()}`);
@@ -164,7 +164,16 @@ const prepareVideos = async (tweet) => {
     }
   }
 
-  return { attachments, oversized };
+  // discord.js は送信時にパスからファイルを読むため、送信完了後に呼ぶこと
+  const cleanup = async () => {
+    try {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    } catch (e) {
+      console.warn(`  一時ディレクトリの削除に失敗: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+
+  return { attachments, oversized, cleanup };
 };
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
@@ -189,18 +198,23 @@ client.once("clientReady", async () => {
       await channel.send({ content: "**v1**", embeds: v1.build(p.tweet) });
 
       // v2（Components v2）。実ツイートの動画は本番同様に添付して確認する
-      const { attachments, oversized } = await prepareVideos(p.tweet);
-      const container = v2.build({
-        tweet: p.tweet,
-        spoiler: p.spoiler ?? false,
-        attachedFileNames: attachments.map((a) => a.name),
-        oversizedVideoUrls: [...(p.oversizedVideoUrls ?? []), ...oversized],
-      });
-      await channel.send({
-        flags: MessageFlags.IsComponentsV2,
-        components: [container],
-        files: attachments,
-      });
+      const { attachments, oversized, cleanup } = await prepareVideos(p.tweet);
+      try {
+        const container = v2.build({
+          tweet: p.tweet,
+          spoiler: p.spoiler ?? false,
+          attachedFileNames: attachments.map((a) => a.name),
+          oversizedVideoUrls: [...(p.oversizedVideoUrls ?? []), ...oversized],
+        });
+        await channel.send({
+          flags: MessageFlags.IsComponentsV2,
+          components: [container],
+          files: attachments,
+        });
+      } finally {
+        // 送信の成否にかかわらず一時ファイルを残さない
+        await cleanup();
+      }
 
       console.log(`  送信: ${p.name}`);
       await new Promise((r) => setTimeout(r, 1200));
