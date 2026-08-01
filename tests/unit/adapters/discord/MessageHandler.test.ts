@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ChannelType } from "discord.js";
+import { ChannelType, MessageFlags } from "discord.js";
 
 import type { ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
 import type {
@@ -7,6 +7,7 @@ import type {
   IVideoDownloader,
 } from "@/adapters/discord/MessageHandler";
 import { MessageHandler } from "@/adapters/discord/MessageHandler";
+import { ComponentsV2Builder } from "@/adapters/discord/ComponentsV2Builder";
 import type { IReplyLogger } from "@/db/replyLogger";
 import type { ChannelConfigService } from "@/core/services/ChannelConfigService";
 import type { ArticlePostService } from "@/core/services/ArticlePostService";
@@ -63,6 +64,7 @@ const createMockMessage = (overrides: Record<string, unknown> = {}) =>
     channel: {
       type: ChannelType.GuildText,
       sendTyping: vi.fn().mockResolvedValue(undefined),
+      send: vi.fn().mockResolvedValue({ id: "channel-msg-id" }),
     },
     content: "Check this https://x.com/user/status/123456789",
     id: "msg-id",
@@ -83,6 +85,7 @@ describe("MessageHandler", () => {
   let videoDownloader: IVideoDownloader;
   let replyLogger: IReplyLogger;
   let articlePostService: ArticlePostService;
+  let componentsV2Builder: ComponentsV2Builder;
   let handler: MessageHandler;
 
   beforeEach(() => {
@@ -106,6 +109,7 @@ describe("MessageHandler", () => {
     } as unknown as DiscordEmbedBuilder;
 
     mediaHandler = {
+      filterVideos: vi.fn((media) => media.filter((m: { type: string }) => m.type === "video")),
       filterBySize: vi
         .fn()
         .mockResolvedValue({ downloadable: [], tooLarge: [] }),
@@ -129,6 +133,8 @@ describe("MessageHandler", () => {
       deleteReply: vi.fn().mockResolvedValue(undefined),
     };
 
+    componentsV2Builder = new ComponentsV2Builder();
+
     articlePostService = {
       resolve: vi.fn(),
       remember: vi.fn().mockResolvedValue(undefined),
@@ -138,6 +144,7 @@ describe("MessageHandler", () => {
       processor,
       twitterAdapter,
       embedBuilder,
+      componentsV2Builder,
       mediaHandler,
       fileManager,
       videoDownloader,
@@ -194,6 +201,7 @@ describe("MessageHandler", () => {
         processor,
         twitterAdapter,
         embedBuilder,
+        componentsV2Builder,
         mediaHandler,
         fileManager,
         videoDownloader,
@@ -225,6 +233,7 @@ describe("MessageHandler", () => {
         processor,
         twitterAdapter,
         embedBuilder,
+        componentsV2Builder,
         mediaHandler,
         fileManager,
         videoDownloader,
@@ -254,6 +263,7 @@ describe("MessageHandler", () => {
         processor,
         twitterAdapter,
         embedBuilder,
+        componentsV2Builder,
         mediaHandler,
         fileManager,
         videoDownloader,
@@ -367,6 +377,7 @@ describe("MessageHandler", () => {
   });
   describe("handleMessage - スポイラー投稿のボタン待ち受け", () => {
     const setupSpoiler = () => {
+      // ボタン方式は v1 の挙動。既定は v2 のため明示的に選ぶ
       const url = "https://x.com/user/status/123456789";
       vi.mocked(processor.extractUrls).mockReturnValue([url]);
       vi.mocked(processor.categorizeBySpoiler).mockReturnValue({
@@ -378,6 +389,26 @@ describe("MessageHandler", () => {
       const message = createMockMessage({
         reply: vi.fn().mockResolvedValue(replyMessage),
       });
+
+      handler = new MessageHandler(
+        processor,
+        twitterAdapter,
+        embedBuilder,
+        componentsV2Builder,
+        mediaHandler,
+        fileManager,
+        videoDownloader,
+        replyLogger,
+        "/tmp",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        {
+          isChannelAllowed: vi.fn().mockResolvedValue(true),
+          getMaxUrlsPerMessage: vi.fn().mockResolvedValue(3),
+          getEmbedVersion: vi.fn().mockResolvedValue("v1"),
+        } as any,
+        undefined,
+        articlePostService,
+      );
 
       return { message, replyMessage };
     };
@@ -429,9 +460,9 @@ describe("MessageHandler", () => {
 
     it("メディア取得に失敗した場合はエラーメッセージを返す", async () => {
       const { message, replyMessage } = setupSpoiler();
-      vi.mocked(fileManager.createTempDirectory).mockRejectedValue(
-        new Error("disk full"),
-      );
+      // downloadVideoAttachments が実際に呼ぶのは createDirectory。
+      // createTempDirectory を落としても経路に影響しない
+      vi.mocked(fileManager.createDirectory).mockRejectedValue(new Error("disk full"));
       await handler.handleMessage(createMockClient(), message);
 
       const interaction = createMockButtonInteraction();
@@ -466,6 +497,137 @@ describe("MessageHandler", () => {
       vi.mocked(replyMessage.edit).mockRejectedValue(new Error("Unknown Message"));
 
       await expect(replyMessage.emit("end")).resolves.not.toThrow();
+    });
+  });
+  describe("handleMessage - 埋め込み方式の出し分け", () => {
+    const setup = (embedVersion: "v1" | "v2") => {
+      const replyMessage = createMockReplyMessage();
+      const message = createMockMessage({
+        reply: vi.fn().mockResolvedValue(replyMessage),
+        guild: { premiumTier: 0 },
+      });
+      const configService = {
+        isChannelAllowed: vi.fn().mockResolvedValue(true),
+        getMaxUrlsPerMessage: vi.fn().mockResolvedValue(3),
+        getEmbedVersion: vi.fn().mockResolvedValue(embedVersion),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+
+      const h = new MessageHandler(
+        processor,
+        twitterAdapter,
+        embedBuilder,
+        componentsV2Builder,
+        mediaHandler,
+        fileManager,
+        videoDownloader,
+        replyLogger,
+        "/tmp",
+        configService,
+        undefined,
+        articlePostService,
+      );
+
+      return { handler: h, message, replyMessage, configService };
+    };
+
+    it("v1 では従来どおり embeds で送信する", async () => {
+      const { handler: h, message } = setup("v1");
+
+      await h.handleMessage(createMockClient(), message);
+
+      const payload = vi.mocked(message.reply).mock.calls[0][0] as Record<string, unknown>;
+      expect(payload.embeds).toBeDefined();
+      expect(payload.components).toBeUndefined();
+    });
+
+    it("v2 では Components v2 のフラグを立てて送信する", async () => {
+      const { handler: h, message } = setup("v2");
+
+      await h.handleMessage(createMockClient(), message);
+
+      const payload = vi.mocked(message.reply).mock.calls[0][0] as Record<string, unknown>;
+      expect(payload.flags).toBe(MessageFlags.IsComponentsV2);
+      expect(payload.components).toBeDefined();
+      // v2 では content も embeds も併用できない
+      expect(payload.embeds).toBeUndefined();
+      expect(payload.content).toBeUndefined();
+    });
+
+    it("v2 では動画を別メッセージで投稿しない", async () => {
+      const { handler: h, message } = setup("v2");
+      vi.mocked(processor.categorizeBySpoiler).mockReturnValue({
+        normal: ["https://x.com/user/status/123456789"],
+        spoiler: [],
+      });
+      vi.mocked(twitterAdapter.fetchTweet).mockResolvedValue(
+        createMockTweet({
+          media: [{ url: "https://v.test/1.mp4", thumbnailUrl: "https://v.test/1.jpg", type: "video" }],
+        }),
+      );
+
+      await h.handleMessage(createMockClient(), message);
+
+      // 送信は返信の1通のみ。チャンネルへの直接送信は発生しない
+      expect(message.reply).toHaveBeenCalledTimes(1);
+      expect(message.channel.send).not.toHaveBeenCalled();
+    });
+
+    it("guild 設定を参照して方式を決める", async () => {
+      const { handler: h, message, configService } = setup("v2");
+
+      await h.handleMessage(createMockClient(), message);
+
+      expect(configService.getEmbedVersion).toHaveBeenCalledWith(message.guildId);
+    });
+  });
+
+  describe("handleMessage - v2 のスポイラー", () => {
+    const setupSpoiler = () => {
+      const replyMessage = createMockReplyMessage();
+      const message = createMockMessage({
+        reply: vi.fn().mockResolvedValue(replyMessage),
+        guild: { premiumTier: 0 },
+      });
+      const configService = {
+        isChannelAllowed: vi.fn().mockResolvedValue(true),
+        getMaxUrlsPerMessage: vi.fn().mockResolvedValue(3),
+        getEmbedVersion: vi.fn().mockResolvedValue("v2"),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+
+      vi.mocked(processor.categorizeBySpoiler).mockReturnValue({
+        normal: [],
+        spoiler: ["https://x.com/user/status/123456789"],
+      });
+
+      const h = new MessageHandler(
+        processor,
+        twitterAdapter,
+        embedBuilder,
+        componentsV2Builder,
+        mediaHandler,
+        fileManager,
+        videoDownloader,
+        replyLogger,
+        "/tmp",
+        configService,
+        undefined,
+        articlePostService,
+      );
+
+      return { handler: h, message, replyMessage };
+    };
+
+    it("ボタンを使わずネイティブのぼかしで表現する", async () => {
+      const { handler: h, message, replyMessage } = setupSpoiler();
+
+      await h.handleMessage(createMockClient(), message);
+
+      const payload = vi.mocked(message.reply).mock.calls[0][0] as Record<string, unknown>;
+      expect(payload.flags).toBe(MessageFlags.IsComponentsV2);
+      // v1 のボタン方式で使う collector は張らない
+      expect(replyMessage.createMessageComponentCollector).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 
-import { DEFAULT_MAX_URLS_PER_MESSAGE } from "@rx-twitter/shared";
+import { DEFAULT_EMBED_VERSION, DEFAULT_MAX_URLS_PER_MESSAGE } from "@rx-twitter/shared";
 import {
   ActionRowBuilder,
   AttachmentBuilder,
@@ -13,6 +13,7 @@ import {
   DiscordAPIError,
   Message,
   EmbedBuilder,
+  MessageFlags,
 } from "discord.js";
 
 import { ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
@@ -26,6 +27,7 @@ import { IReplyLogger } from "@/db/replyLogger";
 import logger from "@/utils/logger";
 
 import { resolveAttachmentLimit } from "./attachmentLimit";
+import { ComponentsV2Builder } from "./ComponentsV2Builder";
 import { DiscordEmbedBuilder } from "./EmbedBuilder";
 
 /**
@@ -64,6 +66,7 @@ export class MessageHandler {
     private readonly processor: TweetProcessor,
     private readonly twitterAdapter: ITwitterAdapter,
     private readonly embedBuilder: DiscordEmbedBuilder,
+    private readonly componentsV2Builder: ComponentsV2Builder,
     private readonly mediaHandler: MediaHandler,
     private readonly fileManager: IFileManager,
     private readonly videoDownloader: IVideoDownloader,
@@ -316,6 +319,16 @@ export class MessageHandler {
       }
     }
 
+    // guild 設定に応じて表示方式を出し分ける。guild 外（DM 等）は既定に従う
+    const embedVersion = message.guildId
+      ? ((await this.channelConfigService?.getEmbedVersion(message.guildId)) ?? DEFAULT_EMBED_VERSION)
+      : DEFAULT_EMBED_VERSION;
+
+    if (embedVersion === "v2") {
+      await this.sendComponentsV2Message(message, tweet, isSpoiler);
+      return true;
+    }
+
     // Embedを作成
     const embeds = this.embedBuilder.build(tweet);
 
@@ -339,6 +352,40 @@ export class MessageHandler {
     }
 
     return true;
+  }
+
+  /**
+   * Components v2 でツイートを送信する
+   *
+   * 動画を同じ Container 内へ収めるため、v1 のような別メッセージ投稿を行わない。
+   * スポイラーは Container のぼかしで表現するため、ボタンと collector も使わない。
+   */
+  private async sendComponentsV2Message(message: Message, tweet: Tweet, isSpoiler: boolean): Promise<void> {
+    // 動画が無ければ一時ディレクトリの作成もダウンロードも不要
+    const hasVideo = this.mediaHandler.filterVideos(tweet.media).length > 0;
+    const { attachments, largeVideoUrls } = hasVideo
+      ? await this.downloadVideoAttachments(tweet, message.guild)
+      : { attachments: [], largeVideoUrls: [] };
+
+    const container = this.componentsV2Builder.build({
+      tweet,
+      attachedFileNames: attachments.map((a) => a.name).filter((name): name is string => Boolean(name)),
+      oversizedVideoUrls: largeVideoUrls,
+      spoiler: isSpoiler,
+    });
+
+    // IsComponentsV2 を立てたメッセージでは content も embeds も使えない
+    const replyMessage = await message.reply({
+      flags: MessageFlags.IsComponentsV2,
+      components: [container],
+      files: attachments,
+      allowedMentions: { repliedUser: false },
+    });
+
+    await this.replyLogger.logReply(message.id, {
+      replyIds: [replyMessage.id],
+      channelId: message.channelId,
+    });
   }
 
   /**
@@ -381,7 +428,7 @@ export class MessageHandler {
 
       try {
         // 動画をダウンロードしてエフェメラルで送信
-        const { attachments, largeVideoUrls } = await this.downloadMediaForSpoiler(tweet, message.guild);
+        const { attachments, largeVideoUrls } = await this.downloadVideoAttachments(tweet, message.guild);
 
         // 大きすぎるファイルのURLをcontentに含める
         const content =
@@ -426,11 +473,12 @@ export class MessageHandler {
   }
 
   /**
-   * スポイラー用にメディアをダウンロードしてAttachmentBuilderを作成
+   * 動画をダウンロードして AttachmentBuilder を作成する
+   * v1 のスポイラー展開と v2 の Container 添付の両方で使う
    * @param tweet ツイートデータ
    * @returns AttachmentBuilder配列と大きすぎるファイルのURL配列
    */
-  private async downloadMediaForSpoiler(
+  private async downloadVideoAttachments(
     tweet: Tweet,
     guild: Message["guild"]
   ): Promise<{ attachments: AttachmentBuilder[]; largeVideoUrls: string[] }> {
