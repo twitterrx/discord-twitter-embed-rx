@@ -948,22 +948,18 @@
                 "nullable": true
               },
               "admin": {
+                "nullable": true,
                 "allOf": [
                   {
                     "$ref": "#/components/schemas/APIUser"
-                  },
-                  {
-                    "nullable": true
                   }
                 ]
               },
               "creator": {
+                "nullable": true,
                 "allOf": [
                   {
                     "$ref": "#/components/schemas/APIUser"
-                  },
-                  {
-                    "nullable": true
                   }
                 ]
               },

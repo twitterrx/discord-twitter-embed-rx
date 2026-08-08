@@ -337,8 +337,8 @@ export type APITwitterStatusCommunity = {
   is_nsfw: boolean;
   /** @nullable */
   topic: string | null;
-  admin?: APIUser & (unknown | null);
-  creator?: APIUser & (unknown | null);
+  admin?: APIUser | null;
+  creator?: APIUser | null;
   join_policy: APITwitterStatusCommunityJoinPolicy;
   invites_policy: APITwitterStatusCommunityInvitesPolicy;
   is_pinned: boolean;
@@ -819,8 +819,8 @@ export const APITwitterStatus: zod.ZodType<APITwitterStatus> = zod.object({
   "search_tags": zod.array(zod.string()),
   "is_nsfw": zod.boolean(),
   "topic": zod.string().nullable(),
-  "admin": APIUser.and(zod.unknown().nullable()).optional(),
-  "creator": APIUser.and(zod.unknown().nullable()).optional(),
+  "admin": APIUser.nullish(),
+  "creator": APIUser.nullish(),
   "join_policy": zod.enum(['Open', 'Closed']),
   "invites_policy": zod.enum(['MemberInvitesAllowed', 'MemberInvitesDisabled']),
   "is_pinned": zod.boolean()

@@ -230,6 +230,34 @@ describe("SocialThread schema", () => {
     });
   });
 
+  /**
+   * community.admin / creator は allOf: [$ref, { nullable: true }] のままだったため、
+   * publisher と同じく null を弾いていた。コミュニティ投稿の Embed が止まる。
+   */
+  describe("community の admin / creator が null", () => {
+    const createCommunity = () => ({
+      id: "c",
+      name: "n",
+      description: "d",
+      created_at: "2024-01-01T00:00:00.000Z",
+      search_tags: [],
+      is_nsfw: false,
+      topic: "t",
+      join_policy: "Open",
+      invites_policy: "MemberInvitesAllowed",
+      is_pinned: false,
+      admin: null,
+      creator: null,
+    });
+
+    it("admin / creator が null の community を受理する", () => {
+      const result = SocialThread.safeParse(wrap({ ...createValidStatus(), community: createCommunity() }));
+
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe("tombstone", () => {
     /**
      * isTombstone は type しか見ていない。reason / message が増減しただけで
