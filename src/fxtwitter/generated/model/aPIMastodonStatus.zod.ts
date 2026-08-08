@@ -114,7 +114,7 @@ export type APIMastodonStatusMediaVideosItem = {
   duration: number;
   filesize?: number;
   formats: APIMastodonStatusMediaVideosItemFormatsItem[];
-  publisher?: APIUser & (unknown | null);
+  publisher?: APIUser | null;
 };
 export type APIMastodonStatusMediaAllItem = {
   id?: string;
@@ -148,7 +148,7 @@ export type APIMastodonStatusMediaAllItem = {
   height?: number;
   width?: number;
 })[];
-  publisher?: APIUser & (unknown | null);
+  publisher?: APIUser | null;
 } | {
   id?: string;
   format?: string;
@@ -386,7 +386,7 @@ export const APIMastodonStatus: zod.ZodType<APIMastodonStatus> = zod.object({
   "height": zod.number().optional(),
   "width": zod.number().optional()
 })),
-  "publisher": APIUser.and(zod.unknown().nullable()).optional()
+  "publisher": APIUser.nullish()
 })).optional(),
   "all": zod.array(zod.union([zod.object({
   "id": zod.string().optional(),
@@ -417,7 +417,7 @@ export const APIMastodonStatus: zod.ZodType<APIMastodonStatus> = zod.object({
   "height": zod.number().optional(),
   "width": zod.number().optional()
 })),
-  "publisher": APIUser.and(zod.unknown().nullable()).optional()
+  "publisher": APIUser.nullish()
 }),zod.object({
   "id": zod.string().optional(),
   "format": zod.string().optional(),

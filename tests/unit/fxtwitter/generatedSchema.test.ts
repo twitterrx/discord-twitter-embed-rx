@@ -185,6 +185,35 @@ describe("SocialThread schema", () => {
     );
   });
 
+  /**
+   * 実レスポンスでは media.videos[].publisher / media.all[].publisher が null になる。
+   * orval が allOf + nullable の nullable を落としていたため、動画ツイートが全滅していた。
+   */
+  describe("media の publisher が null", () => {
+    const createVideoMedia = () => ({
+      type: "video" as const,
+      url: "https://video.twimg.com/v.mp4",
+      width: 1280,
+      height: 720,
+      duration: 10,
+      formats: [{ url: "https://video.twimg.com/v.mp4" }],
+      publisher: null,
+    });
+
+    it("publisher が null の動画を受理する", () => {
+      const status = createValidStatus();
+      const result = SocialThread.safeParse(
+        wrap({
+          ...status,
+          media: { all: [createVideoMedia()], videos: [createVideoMedia()] },
+        })
+      );
+
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe("tombstone", () => {
     /**
      * isTombstone は type しか見ていない。reason / message が増減しただけで

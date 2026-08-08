@@ -351,14 +351,8 @@
                       }
                     },
                     "publisher": {
-                      "allOf": [
-                        {
-                          "$ref": "#/components/schemas/APIUser"
-                        },
-                        {
-                          "nullable": true
-                        }
-                      ]
+                      "$ref": "#/components/schemas/APIUser",
+                      "nullable": true
                     }
                   },
                   "required": [
@@ -498,14 +492,8 @@
                           }
                         },
                         "publisher": {
-                          "allOf": [
-                            {
-                              "$ref": "#/components/schemas/APIUser"
-                            },
-                            {
-                              "nullable": true
-                            }
-                          ]
+                          "$ref": "#/components/schemas/APIUser",
+                          "nullable": true
                         }
                       },
                       "required": [
@@ -2257,14 +2245,8 @@
                       }
                     },
                     "publisher": {
-                      "allOf": [
-                        {
-                          "$ref": "#/components/schemas/APIUser"
-                        },
-                        {
-                          "nullable": true
-                        }
-                      ]
+                      "$ref": "#/components/schemas/APIUser",
+                      "nullable": true
                     }
                   },
                   "required": [
@@ -2404,14 +2386,8 @@
                           }
                         },
                         "publisher": {
-                          "allOf": [
-                            {
-                              "$ref": "#/components/schemas/APIUser"
-                            },
-                            {
-                              "nullable": true
-                            }
-                          ]
+                          "$ref": "#/components/schemas/APIUser",
+                          "nullable": true
                         }
                       },
                       "required": [
@@ -3079,14 +3055,8 @@
                       }
                     },
                     "publisher": {
-                      "allOf": [
-                        {
-                          "$ref": "#/components/schemas/APIUser"
-                        },
-                        {
-                          "nullable": true
-                        }
-                      ]
+                      "$ref": "#/components/schemas/APIUser",
+                      "nullable": true
                     }
                   },
                   "required": [
@@ -3226,14 +3196,8 @@
                           }
                         },
                         "publisher": {
-                          "allOf": [
-                            {
-                              "$ref": "#/components/schemas/APIUser"
-                            },
-                            {
-                              "nullable": true
-                            }
-                          ]
+                          "$ref": "#/components/schemas/APIUser",
+                          "nullable": true
                         }
                       },
                       "required": [
@@ -3901,14 +3865,8 @@
                       }
                     },
                     "publisher": {
-                      "allOf": [
-                        {
-                          "$ref": "#/components/schemas/APIUser"
-                        },
-                        {
-                          "nullable": true
-                        }
-                      ]
+                      "$ref": "#/components/schemas/APIUser",
+                      "nullable": true
                     }
                   },
                   "required": [
@@ -4048,14 +4006,8 @@
                           }
                         },
                         "publisher": {
-                          "allOf": [
-                            {
-                              "$ref": "#/components/schemas/APIUser"
-                            },
-                            {
-                              "nullable": true
-                            }
-                          ]
+                          "$ref": "#/components/schemas/APIUser",
+                          "nullable": true
                         }
                       },
                       "required": [
@@ -4726,14 +4678,8 @@
                       }
                     },
                     "publisher": {
-                      "allOf": [
-                        {
-                          "$ref": "#/components/schemas/APIUser"
-                        },
-                        {
-                          "nullable": true
-                        }
-                      ]
+                      "$ref": "#/components/schemas/APIUser",
+                      "nullable": true
                     }
                   },
                   "required": [
@@ -4873,14 +4819,8 @@
                           }
                         },
                         "publisher": {
-                          "allOf": [
-                            {
-                              "$ref": "#/components/schemas/APIUser"
-                            },
-                            {
-                              "nullable": true
-                            }
-                          ]
+                          "$ref": "#/components/schemas/APIUser",
+                          "nullable": true
                         }
                       },
                       "required": [

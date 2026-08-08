@@ -114,7 +114,7 @@ export type APIThreadsStatusMediaVideosItem = {
   duration: number;
   filesize?: number;
   formats: APIThreadsStatusMediaVideosItemFormatsItem[];
-  publisher?: APIUser & (unknown | null);
+  publisher?: APIUser | null;
 };
 export type APIThreadsStatusMediaAllItem = {
   id?: string;
@@ -148,7 +148,7 @@ export type APIThreadsStatusMediaAllItem = {
   height?: number;
   width?: number;
 })[];
-  publisher?: APIUser & (unknown | null);
+  publisher?: APIUser | null;
 } | {
   id?: string;
   format?: string;
@@ -387,7 +387,7 @@ export const APIThreadsStatus: zod.ZodType<APIThreadsStatus> = zod.object({
   "height": zod.number().optional(),
   "width": zod.number().optional()
 })),
-  "publisher": APIUser.and(zod.unknown().nullable()).optional()
+  "publisher": APIUser.nullish()
 })).optional(),
   "all": zod.array(zod.union([zod.object({
   "id": zod.string().optional(),
@@ -418,7 +418,7 @@ export const APIThreadsStatus: zod.ZodType<APIThreadsStatus> = zod.object({
   "height": zod.number().optional(),
   "width": zod.number().optional()
 })),
-  "publisher": APIUser.and(zod.unknown().nullable()).optional()
+  "publisher": APIUser.nullish()
 }),zod.object({
   "id": zod.string().optional(),
   "format": zod.string().optional(),
