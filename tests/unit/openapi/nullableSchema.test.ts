@@ -5,22 +5,19 @@ import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
 /**
- * OpenAPI 3.0 で「null になりうる $ref」を書く方法は
- * { "nullable": true, "allOf": [{ "$ref": ... }] } の一択。
- * ここから外れた2つの書き方が、実レスポンスを弾いて Embed を止めてきた。
+ * OpenAPI 3.1 は nullable キーワードを廃止し、null を型として表す。
  *
- *   1. { "$ref": ..., "nullable": true }
- *      Reference Object は $ref 以外のプロパティを許さない（3.0 仕様）。
- *      orval 8.22.0 は意図通り nullish を生むが、標準準拠のツールは sibling を無視する。
- *      https://spec.openapis.org/oas/v3.0.0.html#reference-object
+ *   { "type": ["string", "null"] }
+ *   { "anyOf": [{ "$ref": ... }, { "type": "null" }] }
  *
- *   2. { "allOf": [{ "$ref": ... }, { "nullable": true }] }
- *      orval がこの nullable を落とす。APIUser.and(zod.unknown().nullable()) となり
- *      null が弾かれる。動画ツイートの publisher と community.admin / creator が
- *      これで落ちていた。
+ * 3.0 では「null になりうる $ref」の書き方が実質1つしかなく、外れると orval が
+ * 静かに間違った Zod を吐いた。この事故を3回繰り返している（#598）。
  *
- * 一般的な validator（@apidevtools/swagger-parser 等）は dereference してから検証するため
- * どちらも検出できない。実際、修正前のスペックも通ってしまった。だから構造として禁じる。
+ *   { "$ref": ..., "nullable": true }               → 標準準拠のツールが sibling を無視する
+ *   { "allOf": [{ "$ref": ... }, { "nullable": true }] } → orval が nullable を落とす
+ *
+ * 3.1 ではどちらも書く動機が消える。nullable が1つも残っていないことを検査すれば、
+ * 両方の入口をまとめて塞げる。
  */
 const SPEC_DIR = join(__dirname, "../../../openapi");
 
@@ -31,64 +28,36 @@ const loadSpec = (fileName: string): unknown => {
   return fileName.endsWith(".yaml") ? load(raw) : JSON.parse(raw);
 };
 
-const isRecord = (node: unknown): node is Record<string, unknown> =>
-  node !== null && typeof node === "object" && !Array.isArray(node);
-
-/** スペックを走査し、violate に当てはまる箇所を JSON Pointer で列挙する */
-const collect = (node: unknown, violate: (node: Record<string, unknown>) => string | undefined, path = ""): string[] => {
+/** nullable キーワードが現れる箇所を JSON Pointer で列挙する */
+const findNullable = (node: unknown, path = ""): string[] => {
   if (Array.isArray(node)) {
-    return node.flatMap((item, index) => collect(item, violate, `${path}/${index}`));
+    return node.flatMap((item, index) => findNullable(item, `${path}/${index}`));
   }
-  if (!isRecord(node)) {
+  if (node === null || typeof node !== "object") {
     return [];
   }
 
-  const reason = violate(node);
-  const self = reason === undefined ? [] : [`${path} (${reason})`];
+  const entries = Object.entries(node as Record<string, unknown>);
+  const self = entries.some(([key]) => key === "nullable") ? [`${path}/nullable`] : [];
 
-  return [...self, ...Object.entries(node).flatMap(([key, value]) => collect(value, violate, `${path}/${key}`))];
+  return [...self, ...entries.flatMap(([key, value]) => findNullable(value, `${path}/${key}`))];
 };
 
-/** $ref と同じオブジェクトに他のキーがある */
-const refWithSiblings = (node: Record<string, unknown>): string | undefined => {
-  const siblings = Object.keys(node).filter((key) => key !== "$ref");
-  return "$ref" in node && siblings.length > 0 ? siblings.join(", ") : undefined;
-};
+describe("OpenAPI spec: 3.1", () => {
+  it.each(SPEC_FILES)("%s は 3.1 を宣言している", (fileName) => {
+    const spec = loadSpec(fileName) as { openapi?: string };
 
-/** allOf の要素として裸の { nullable: true } が並んでいる */
-const nullableInsideAllOf = (node: Record<string, unknown>): string | undefined => {
-  if (!Array.isArray(node.allOf)) {
-    return undefined;
-  }
-  const bare = node.allOf.some(
-    (member) => isRecord(member) && member.nullable === true && Object.keys(member).length === 1
-  );
-  return bare ? "allOf の要素に裸の nullable" : undefined;
-};
-
-describe("OpenAPI spec: nullable な $ref の書き方", () => {
-  describe("$ref に sibling を置かない", () => {
-    it.each(SPEC_FILES)("%s", (fileName) => {
-      expect(collect(loadSpec(fileName), refWithSiblings)).toEqual([]);
-    });
-
-    it("違反を検出できる", () => {
-      // 検出器そのものが壊れて緑になるのを防ぐ
-      const broken = { schemas: { A: { $ref: "#/components/schemas/B", nullable: true } } };
-
-      expect(collect(broken, refWithSiblings)).toEqual(["/schemas/A (nullable)"]);
-    });
+    expect(spec.openapi).toMatch(/^3\.1\.\d+$/);
   });
 
-  describe("allOf の要素に裸の nullable を置かない", () => {
-    it.each(SPEC_FILES)("%s", (fileName) => {
-      expect(collect(loadSpec(fileName), nullableInsideAllOf)).toEqual([]);
-    });
+  it.each(SPEC_FILES)("%s に nullable キーワードが残っていない", (fileName) => {
+    expect(findNullable(loadSpec(fileName))).toEqual([]);
+  });
 
-    it("違反を検出できる", () => {
-      const broken = { schemas: { A: { allOf: [{ $ref: "#/components/schemas/B" }, { nullable: true }] } } };
+  it("nullable を検出できる", () => {
+    // 検出器そのものが壊れて緑になるのを防ぐ
+    const broken = { schemas: { A: { type: "string", nullable: true } } };
 
-      expect(collect(broken, nullableInsideAllOf)).toEqual(["/schemas/A (allOf の要素に裸の nullable)"]);
-    });
+    expect(findNullable(broken)).toEqual(["/schemas/A/nullable"]);
   });
 });
