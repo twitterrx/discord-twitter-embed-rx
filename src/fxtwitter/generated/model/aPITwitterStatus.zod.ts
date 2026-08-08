@@ -411,7 +411,7 @@ export type APITwitterStatusArticleCoverMedia = {
   media_id: string;
   media_info: APITwitterStatusArticleCoverMediaMediaInfo;
 };
-export type APITwitterStatusArticleContentBlocksItemData = {[key: string]: unknown | null};
+export type APITwitterStatusArticleContentBlocksItemData = {[key: string]: unknown};
 export type APITwitterStatusArticleContentBlocksItemEntityRangesItem = {
   key: number;
   length: number;
@@ -682,7 +682,7 @@ export const APITwitterStatus: zod.ZodType<APITwitterStatus> = zod.object({
   "height": zod.number().optional(),
   "width": zod.number().optional()
 })),
-  "publisher": APIUser.nullish()
+  "publisher": zod.union([APIUser,zod.null()]).optional()
 })).optional(),
   "all": zod.array(zod.union([zod.object({
   "id": zod.string().optional(),
@@ -713,7 +713,7 @@ export const APITwitterStatus: zod.ZodType<APITwitterStatus> = zod.object({
   "height": zod.number().optional(),
   "width": zod.number().optional()
 })),
-  "publisher": APIUser.nullish()
+  "publisher": zod.union([APIUser,zod.null()]).optional()
 }),zod.object({
   "id": zod.string().optional(),
   "format": zod.string().optional(),
@@ -819,8 +819,8 @@ export const APITwitterStatus: zod.ZodType<APITwitterStatus> = zod.object({
   "search_tags": zod.array(zod.string()),
   "is_nsfw": zod.boolean(),
   "topic": zod.string().nullable(),
-  "admin": APIUser.nullish(),
-  "creator": APIUser.nullish(),
+  "admin": zod.union([APIUser,zod.null()]).optional(),
+  "creator": zod.union([APIUser,zod.null()]).optional(),
   "join_policy": zod.enum(['Open', 'Closed']),
   "invites_policy": zod.enum(['MemberInvitesAllowed', 'MemberInvitesDisabled']),
   "is_pinned": zod.boolean()
@@ -896,7 +896,7 @@ export const APITwitterStatus: zod.ZodType<APITwitterStatus> = zod.object({
   "content": zod.object({
   "blocks": zod.array(zod.object({
   "key": zod.string(),
-  "data": zod.record(zod.string(), zod.unknown().nullable()),
+  "data": zod.record(zod.string(), zod.unknown()),
   "entityRanges": zod.array(zod.object({
   "key": zod.number(),
   "length": zod.number(),
