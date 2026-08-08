@@ -14,11 +14,11 @@ export const aPIUserRawDescriptionFacetsItemIndicesMax = 2;
 
 
 export const APIUser = zod.object({
-  "type": zod.enum(['profile']).describe('Discriminator: full user profile (API v2).'),
-  "id": zod.string(),
+  "type": zod.enum(['profile']).optional().describe('Discriminator: full user profile (API v2).'),
+  "id": zod.string().optional(),
   "name": zod.string(),
   "screen_name": zod.string(),
-  "avatar_url": zod.string().nullable(),
+  "avatar_url": zod.string().nullish(),
   "banner_url": zod.string().nullish(),
   "description": zod.string().optional(),
   "raw_description": zod.object({

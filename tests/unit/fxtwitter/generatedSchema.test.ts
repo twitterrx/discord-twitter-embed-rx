@@ -177,12 +177,28 @@ describe("SocialThread schema", () => {
       }
     );
 
-    it.each(["type", "id", "name", "screen_name", "avatar_url"])(
-      "author.%s を欠く status は拒否する",
-      (field) => {
-        expect(parseWithAuthorWithout(field).success).toBe(false);
-      }
-    );
+    /**
+     * type / id は convertToTweet が読んでいない。avatar_url は avatar_url ?? "" と
+     * フォールバックしているので欠落しても変換できる。APIUser は plain union の
+     * ブランチ選択にも使われていないため、type を必須に残す理由もない。
+     */
+    it.each(["type", "id", "avatar_url"])("author.%s を欠いても受理する（読んでいない）", (field) => {
+      const result = parseWithAuthorWithout(field);
+
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
+    it("読んでいない author フィールドをすべて欠いても受理する", () => {
+      const result = parseWithAuthorWithout("type", "id", "avatar_url");
+
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
+    it.each(["name", "screen_name"])("author.%s を欠く status は拒否する", (field) => {
+      expect(parseWithAuthorWithout(field).success).toBe(false);
+    });
   });
 
   /**

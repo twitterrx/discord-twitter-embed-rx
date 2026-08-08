@@ -5672,11 +5672,8 @@
           }
         },
         "required": [
-          "type",
-          "id",
           "name",
-          "screen_name",
-          "avatar_url"
+          "screen_name"
         ]
       },
       "APIReplyingTo": {
