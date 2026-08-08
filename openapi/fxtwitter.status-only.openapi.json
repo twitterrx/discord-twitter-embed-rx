@@ -351,8 +351,12 @@
                       }
                     },
                     "publisher": {
-                      "$ref": "#/components/schemas/APIUser",
-                      "nullable": true
+                      "nullable": true,
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/APIUser"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -492,8 +496,12 @@
                           }
                         },
                         "publisher": {
-                          "$ref": "#/components/schemas/APIUser",
-                          "nullable": true
+                          "nullable": true,
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/APIUser"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -2245,8 +2253,12 @@
                       }
                     },
                     "publisher": {
-                      "$ref": "#/components/schemas/APIUser",
-                      "nullable": true
+                      "nullable": true,
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/APIUser"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -2386,8 +2398,12 @@
                           }
                         },
                         "publisher": {
-                          "$ref": "#/components/schemas/APIUser",
-                          "nullable": true
+                          "nullable": true,
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/APIUser"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -3055,8 +3071,12 @@
                       }
                     },
                     "publisher": {
-                      "$ref": "#/components/schemas/APIUser",
-                      "nullable": true
+                      "nullable": true,
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/APIUser"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -3196,8 +3216,12 @@
                           }
                         },
                         "publisher": {
-                          "$ref": "#/components/schemas/APIUser",
-                          "nullable": true
+                          "nullable": true,
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/APIUser"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -3865,8 +3889,12 @@
                       }
                     },
                     "publisher": {
-                      "$ref": "#/components/schemas/APIUser",
-                      "nullable": true
+                      "nullable": true,
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/APIUser"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -4006,8 +4034,12 @@
                           }
                         },
                         "publisher": {
-                          "$ref": "#/components/schemas/APIUser",
-                          "nullable": true
+                          "nullable": true,
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/APIUser"
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -4678,8 +4710,12 @@
                       }
                     },
                     "publisher": {
-                      "$ref": "#/components/schemas/APIUser",
-                      "nullable": true
+                      "nullable": true,
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/APIUser"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -4819,8 +4855,12 @@
                           }
                         },
                         "publisher": {
-                          "$ref": "#/components/schemas/APIUser",
-                          "nullable": true
+                          "nullable": true,
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/APIUser"
+                            }
+                          ]
                         }
                       },
                       "required": [

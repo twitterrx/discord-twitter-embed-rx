@@ -115,8 +115,9 @@ components:
           description: 引用ツイートのURL (引用がない場合は null)
         qrt:
           nullable: true
-          $ref: "#/components/schemas/VxTwitterStatus"
           description: 引用ツイート (引用がない場合は null)
+          allOf:
+            - $ref: "#/components/schemas/VxTwitterStatus"
         communityNote:
           type: string
           nullable: true
@@ -129,10 +130,12 @@ components:
           nullable: true
         pollData:
           nullable: true
-          $ref: "#/components/schemas/PollData"
+          allOf:
+            - $ref: "#/components/schemas/PollData"
         article:
           nullable: true
-          $ref: "#/components/schemas/Article"
+          allOf:
+            - $ref: "#/components/schemas/Article"
         lang:
           type: string
           nullable: true
@@ -149,7 +152,8 @@ components:
           nullable: true
         translation:
           nullable: true
-          $ref: "#/components/schemas/Translation"
+          allOf:
+            - $ref: "#/components/schemas/Translation"
 
     MediaExtended:
       type: object
