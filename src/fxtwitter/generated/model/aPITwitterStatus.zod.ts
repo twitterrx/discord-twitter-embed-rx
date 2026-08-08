@@ -589,24 +589,24 @@ export type APITwitterStatus = {
   url: string;
   text: string;
   created_at: string;
-  created_timestamp: number;
+  created_timestamp?: number;
   likes: number;
   reposts: number;
-  quotes: number;
+  quotes?: number;
   replies: number;
   quote?: APITwitterStatus | APIStatusTombstone;
   poll?: APITwitterStatusPoll;
   author: APIUser;
-  media: APITwitterStatusMedia;
-  raw_text: APITwitterStatusRawText;
+  media?: APITwitterStatusMedia;
+  raw_text?: APITwitterStatusRawText;
   /** @nullable */
-  lang: string | null;
+  lang?: string | null;
   translation?: APITwitterStatusTranslation;
-  possibly_sensitive: boolean;
-  replying_to: APIReplyingTo | null;
+  possibly_sensitive?: boolean;
+  replying_to?: APIReplyingTo | null;
   /** @nullable */
-  source: string | null;
-  embed_card: APITwitterStatusEmbedCard;
+  source?: string | null;
+  embed_card?: APITwitterStatusEmbedCard;
   provider: APITwitterStatusProvider;
   /** @nullable */
   views?: number | null;
@@ -614,10 +614,10 @@ export type APITwitterStatus = {
   bookmarks?: number | null;
   community?: APITwitterStatusCommunity;
   article?: APITwitterStatusArticle;
-  is_note_tweet: boolean;
+  is_note_tweet?: boolean;
   /** @nullable */
-  community_note: APITwitterStatusCommunityNote;
-  reposted_by: APIRepostedBy | null;
+  community_note?: APITwitterStatusCommunityNote;
+  reposted_by?: APIRepostedBy | null;
   card?: APITwitterStatusCard;
 };
 
@@ -627,10 +627,10 @@ export const APITwitterStatus: zod.ZodType<APITwitterStatus> = zod.object({
   "url": zod.string(),
   "text": zod.string(),
   "created_at": zod.string(),
-  "created_timestamp": zod.number(),
+  "created_timestamp": zod.number().optional(),
   "likes": zod.number(),
   "reposts": zod.number(),
-  "quotes": zod.number(),
+  "quotes": zod.number().optional(),
   "replies": zod.number(),
   "quote": zod.union([zod.lazy(() => APITwitterStatus),APIStatusTombstone]).optional(),
   "poll": zod.object({
@@ -783,7 +783,7 @@ export const APITwitterStatus: zod.ZodType<APITwitterStatus> = zod.object({
 }).optional()
 })
 }).optional()
-}),
+}).optional(),
   "raw_text": zod.object({
   "text": zod.string(),
   "display_text_range": zod.array(zod.number()).min(aPITwitterStatusRawTextDisplayTextRangeMin).max(aPITwitterStatusRawTextDisplayTextRangeMax),
@@ -795,8 +795,8 @@ export const APITwitterStatus: zod.ZodType<APITwitterStatus> = zod.object({
   "display": zod.string().optional(),
   "id": zod.string().optional()
 }))
-}),
-  "lang": zod.string().nullable(),
+}).optional(),
+  "lang": zod.string().nullish(),
   "translation": zod.object({
   "text": zod.string(),
   "source_lang": zod.string(),
@@ -804,10 +804,10 @@ export const APITwitterStatus: zod.ZodType<APITwitterStatus> = zod.object({
   "target_lang": zod.string(),
   "provider": zod.string()
 }).optional(),
-  "possibly_sensitive": zod.boolean(),
-  "replying_to": APIReplyingTo,
-  "source": zod.string().nullable(),
-  "embed_card": zod.enum(['tweet', 'summary', 'summary_large_image', 'player']),
+  "possibly_sensitive": zod.boolean().optional(),
+  "replying_to": APIReplyingTo.optional(),
+  "source": zod.string().nullish(),
+  "embed_card": zod.enum(['tweet', 'summary', 'summary_large_image', 'player']).optional(),
   "provider": zod.enum(['twitter']),
   "views": zod.number().nullish(),
   "bookmarks": zod.number().nullish(),
@@ -1008,7 +1008,7 @@ export const APITwitterStatus: zod.ZodType<APITwitterStatus> = zod.object({
 })])
 }))
 }).optional(),
-  "is_note_tweet": zod.boolean(),
+  "is_note_tweet": zod.boolean().optional(),
   "community_note": zod.object({
   "text": zod.string(),
   "facets": zod.array(zod.object({
@@ -1019,8 +1019,8 @@ export const APITwitterStatus: zod.ZodType<APITwitterStatus> = zod.object({
   "display": zod.string().optional(),
   "id": zod.string().optional()
 }))
-}).nullable(),
-  "reposted_by": APIRepostedBy,
+}).nullish(),
+  "reposted_by": APIRepostedBy.optional(),
   "card": zod.object({
   "url": zod.string(),
   "title": zod.string().optional(),

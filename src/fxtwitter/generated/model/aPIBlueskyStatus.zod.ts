@@ -305,7 +305,7 @@ export type APIBlueskyStatus = {
   url: string;
   text: string;
   created_at: string;
-  created_timestamp: number;
+  created_timestamp?: number;
   likes: number;
   reposts: number;
   quotes?: number;
@@ -313,16 +313,16 @@ export type APIBlueskyStatus = {
   quote?: APIBlueskyStatus | APIStatusTombstone;
   poll?: APIBlueskyStatusPoll;
   author: APIUser;
-  media: APIBlueskyStatusMedia;
-  raw_text: APIBlueskyStatusRawText;
+  media?: APIBlueskyStatusMedia;
+  raw_text?: APIBlueskyStatusRawText;
   /** @nullable */
-  lang: string | null;
+  lang?: string | null;
   translation?: APIBlueskyStatusTranslation;
-  possibly_sensitive: boolean;
-  replying_to: APIReplyingTo | null;
+  possibly_sensitive?: boolean;
+  replying_to?: APIReplyingTo | null;
   /** @nullable */
-  source: string | null;
-  embed_card: APIBlueskyStatusEmbedCard;
+  source?: string | null;
+  embed_card?: APIBlueskyStatusEmbedCard;
   provider: APIBlueskyStatusProvider;
   reposted_by?: APIRepostedBy | null;
 };
@@ -335,7 +335,7 @@ export const APIBlueskyStatus: zod.ZodType<APIBlueskyStatus> = zod.object({
   "url": zod.string(),
   "text": zod.string(),
   "created_at": zod.string(),
-  "created_timestamp": zod.number(),
+  "created_timestamp": zod.number().optional(),
   "likes": zod.number(),
   "reposts": zod.number(),
   "quotes": zod.number().optional(),
@@ -491,7 +491,7 @@ export const APIBlueskyStatus: zod.ZodType<APIBlueskyStatus> = zod.object({
 }).optional()
 })
 }).optional()
-}),
+}).optional(),
   "raw_text": zod.object({
   "text": zod.string(),
   "facets": zod.array(zod.object({
@@ -502,8 +502,8 @@ export const APIBlueskyStatus: zod.ZodType<APIBlueskyStatus> = zod.object({
   "display": zod.string().optional(),
   "id": zod.string().optional()
 }))
-}),
-  "lang": zod.string().nullable(),
+}).optional(),
+  "lang": zod.string().nullish(),
   "translation": zod.object({
   "text": zod.string(),
   "source_lang": zod.string(),
@@ -511,10 +511,10 @@ export const APIBlueskyStatus: zod.ZodType<APIBlueskyStatus> = zod.object({
   "target_lang": zod.string(),
   "provider": zod.string()
 }).optional(),
-  "possibly_sensitive": zod.boolean(),
-  "replying_to": APIReplyingTo,
-  "source": zod.string().nullable(),
-  "embed_card": zod.enum(['tweet', 'summary', 'summary_large_image', 'player']),
+  "possibly_sensitive": zod.boolean().optional(),
+  "replying_to": APIReplyingTo.optional(),
+  "source": zod.string().nullish(),
+  "embed_card": zod.enum(['tweet', 'summary', 'summary_large_image', 'player']).optional(),
   "provider": zod.enum(['bluesky']),
   "reposted_by": APIRepostedBy.optional()
 });

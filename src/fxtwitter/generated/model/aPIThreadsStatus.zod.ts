@@ -303,7 +303,7 @@ export type APIThreadsStatus = {
   url: string;
   text: string;
   created_at: string;
-  created_timestamp: number;
+  created_timestamp?: number;
   likes: number;
   reposts: number;
   quotes?: number;
@@ -311,16 +311,16 @@ export type APIThreadsStatus = {
   quote?: APIThreadsStatus | APIStatusTombstone;
   poll?: APIThreadsStatusPoll;
   author: APIUser;
-  media: APIThreadsStatusMedia;
-  raw_text: APIThreadsStatusRawText;
+  media?: APIThreadsStatusMedia;
+  raw_text?: APIThreadsStatusRawText;
   /** @nullable */
-  lang: string | null;
+  lang?: string | null;
   translation?: APIThreadsStatusTranslation;
-  possibly_sensitive: boolean;
-  replying_to: APIReplyingTo | null;
+  possibly_sensitive?: boolean;
+  replying_to?: APIReplyingTo | null;
   /** @nullable */
-  source: string | null;
-  embed_card: APIThreadsStatusEmbedCard;
+  source?: string | null;
+  embed_card?: APIThreadsStatusEmbedCard;
   provider: APIThreadsStatusProvider;
   reposted_by?: APIRepostedBy | null;
   media_pk?: string;
@@ -332,7 +332,7 @@ export const APIThreadsStatus: zod.ZodType<APIThreadsStatus> = zod.object({
   "url": zod.string(),
   "text": zod.string(),
   "created_at": zod.string(),
-  "created_timestamp": zod.number(),
+  "created_timestamp": zod.number().optional(),
   "likes": zod.number(),
   "reposts": zod.number(),
   "quotes": zod.number().optional(),
@@ -488,7 +488,7 @@ export const APIThreadsStatus: zod.ZodType<APIThreadsStatus> = zod.object({
 }).optional()
 })
 }).optional()
-}),
+}).optional(),
   "raw_text": zod.object({
   "text": zod.string(),
   "facets": zod.array(zod.object({
@@ -499,8 +499,8 @@ export const APIThreadsStatus: zod.ZodType<APIThreadsStatus> = zod.object({
   "display": zod.string().optional(),
   "id": zod.string().optional()
 }))
-}),
-  "lang": zod.string().nullable(),
+}).optional(),
+  "lang": zod.string().nullish(),
   "translation": zod.object({
   "text": zod.string(),
   "source_lang": zod.string(),
@@ -508,10 +508,10 @@ export const APIThreadsStatus: zod.ZodType<APIThreadsStatus> = zod.object({
   "target_lang": zod.string(),
   "provider": zod.string()
 }).optional(),
-  "possibly_sensitive": zod.boolean(),
-  "replying_to": APIReplyingTo,
-  "source": zod.string().nullable(),
-  "embed_card": zod.enum(['tweet', 'summary', 'summary_large_image', 'player']),
+  "possibly_sensitive": zod.boolean().optional(),
+  "replying_to": APIReplyingTo.optional(),
+  "source": zod.string().nullish(),
+  "embed_card": zod.enum(['tweet', 'summary', 'summary_large_image', 'player']).optional(),
   "provider": zod.enum(['threads']),
   "reposted_by": APIRepostedBy.optional(),
   "media_pk": zod.string().optional()

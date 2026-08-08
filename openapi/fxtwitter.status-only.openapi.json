@@ -80,10 +80,7 @@
           }
         },
         "required": [
-          "code",
-          "status",
-          "thread",
-          "author"
+          "status"
         ]
       },
       "ApiQueryError": {
@@ -1997,23 +1994,11 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
-          "quotes",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
-          "provider",
-          "is_note_tweet",
-          "community_note",
-          "reposted_by"
+          "provider"
         ]
       },
       "APIBlueskyStatus": {
@@ -2837,18 +2822,10 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
           "provider"
         ]
       },
@@ -3667,18 +3644,10 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
           "provider"
         ]
       },
@@ -4500,18 +4469,10 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
           "provider"
         ]
       },
@@ -5333,18 +5294,10 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
           "provider"
         ]
       },
@@ -5359,25 +5312,10 @@
             "description": "Placeholder for an unavailable post (quote/thread)."
           },
           "provider": {
-            "type": "string",
-            "enum": [
-              "twitter",
-              "bluesky",
-              "mastodon",
-              "tiktok",
-              "instagram",
-              "threads"
-            ]
+            "type": "string"
           },
           "reason": {
             "type": "string",
-            "enum": [
-              "deleted",
-              "suspended",
-              "private",
-              "blocked",
-              "unavailable"
-            ],
             "description": "Why the post is unavailable"
           },
           "message": {
@@ -5574,10 +5512,7 @@
           }
         },
         "required": [
-          "type",
-          "provider",
-          "reason",
-          "message"
+          "type"
         ]
       },
       "APIUser": {
@@ -5761,20 +5696,7 @@
           "id",
           "name",
           "screen_name",
-          "avatar_url",
-          "banner_url",
-          "description",
-          "raw_description",
-          "location",
-          "url",
-          "protected",
-          "followers",
-          "following",
-          "statuses",
-          "media_count",
-          "likes",
-          "joined",
-          "website"
+          "avatar_url"
         ]
       },
       "APIReplyingTo": {
