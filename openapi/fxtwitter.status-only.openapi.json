@@ -80,10 +80,7 @@
           }
         },
         "required": [
-          "code",
-          "status",
-          "thread",
-          "author"
+          "status"
         ]
       },
       "ApiQueryError": {
@@ -354,12 +351,10 @@
                       }
                     },
                     "publisher": {
+                      "nullable": true,
                       "allOf": [
                         {
                           "$ref": "#/components/schemas/APIUser"
-                        },
-                        {
-                          "nullable": true
                         }
                       ]
                     }
@@ -501,12 +496,10 @@
                           }
                         },
                         "publisher": {
+                          "nullable": true,
                           "allOf": [
                             {
                               "$ref": "#/components/schemas/APIUser"
-                            },
-                            {
-                              "nullable": true
                             }
                           ]
                         }
@@ -955,22 +948,18 @@
                 "nullable": true
               },
               "admin": {
+                "nullable": true,
                 "allOf": [
                   {
                     "$ref": "#/components/schemas/APIUser"
-                  },
-                  {
-                    "nullable": true
                   }
                 ]
               },
               "creator": {
+                "nullable": true,
                 "allOf": [
                   {
                     "$ref": "#/components/schemas/APIUser"
-                  },
-                  {
-                    "nullable": true
                   }
                 ]
               },
@@ -1997,23 +1986,11 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
-          "quotes",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
-          "provider",
-          "is_note_tweet",
-          "community_note",
-          "reposted_by"
+          "provider"
         ]
       },
       "APIBlueskyStatus": {
@@ -2272,12 +2249,10 @@
                       }
                     },
                     "publisher": {
+                      "nullable": true,
                       "allOf": [
                         {
                           "$ref": "#/components/schemas/APIUser"
-                        },
-                        {
-                          "nullable": true
                         }
                       ]
                     }
@@ -2419,12 +2394,10 @@
                           }
                         },
                         "publisher": {
+                          "nullable": true,
                           "allOf": [
                             {
                               "$ref": "#/components/schemas/APIUser"
-                            },
-                            {
-                              "nullable": true
                             }
                           ]
                         }
@@ -2837,18 +2810,10 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
           "provider"
         ]
       },
@@ -3102,12 +3067,10 @@
                       }
                     },
                     "publisher": {
+                      "nullable": true,
                       "allOf": [
                         {
                           "$ref": "#/components/schemas/APIUser"
-                        },
-                        {
-                          "nullable": true
                         }
                       ]
                     }
@@ -3249,12 +3212,10 @@
                           }
                         },
                         "publisher": {
+                          "nullable": true,
                           "allOf": [
                             {
                               "$ref": "#/components/schemas/APIUser"
-                            },
-                            {
-                              "nullable": true
                             }
                           ]
                         }
@@ -3667,18 +3628,10 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
           "provider"
         ]
       },
@@ -3932,12 +3885,10 @@
                       }
                     },
                     "publisher": {
+                      "nullable": true,
                       "allOf": [
                         {
                           "$ref": "#/components/schemas/APIUser"
-                        },
-                        {
-                          "nullable": true
                         }
                       ]
                     }
@@ -4079,12 +4030,10 @@
                           }
                         },
                         "publisher": {
+                          "nullable": true,
                           "allOf": [
                             {
                               "$ref": "#/components/schemas/APIUser"
-                            },
-                            {
-                              "nullable": true
                             }
                           ]
                         }
@@ -4500,18 +4449,10 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
           "provider"
         ]
       },
@@ -4765,12 +4706,10 @@
                       }
                     },
                     "publisher": {
+                      "nullable": true,
                       "allOf": [
                         {
                           "$ref": "#/components/schemas/APIUser"
-                        },
-                        {
-                          "nullable": true
                         }
                       ]
                     }
@@ -4912,12 +4851,10 @@
                           }
                         },
                         "publisher": {
+                          "nullable": true,
                           "allOf": [
                             {
                               "$ref": "#/components/schemas/APIUser"
-                            },
-                            {
-                              "nullable": true
                             }
                           ]
                         }
@@ -5333,18 +5270,10 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
           "provider"
         ]
       },
@@ -5359,25 +5288,10 @@
             "description": "Placeholder for an unavailable post (quote/thread)."
           },
           "provider": {
-            "type": "string",
-            "enum": [
-              "twitter",
-              "bluesky",
-              "mastodon",
-              "tiktok",
-              "instagram",
-              "threads"
-            ]
+            "type": "string"
           },
           "reason": {
             "type": "string",
-            "enum": [
-              "deleted",
-              "suspended",
-              "private",
-              "blocked",
-              "unavailable"
-            ],
             "description": "Why the post is unavailable"
           },
           "message": {
@@ -5574,10 +5488,7 @@
           }
         },
         "required": [
-          "type",
-          "provider",
-          "reason",
-          "message"
+          "type"
         ]
       },
       "APIUser": {
@@ -5757,24 +5668,8 @@
           }
         },
         "required": [
-          "type",
-          "id",
           "name",
-          "screen_name",
-          "avatar_url",
-          "banner_url",
-          "description",
-          "raw_description",
-          "location",
-          "url",
-          "protected",
-          "followers",
-          "following",
-          "statuses",
-          "media_count",
-          "likes",
-          "joined",
-          "website"
+          "screen_name"
         ]
       },
       "APIReplyingTo": {

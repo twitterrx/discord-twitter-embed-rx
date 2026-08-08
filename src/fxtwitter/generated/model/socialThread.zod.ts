@@ -15,10 +15,10 @@ import { APITwitterStatus } from './aPITwitterStatus.zod';
 import { APIUser } from './aPIUser.zod';
 
 export const SocialThread = zod.object({
-  "code": zod.number().describe('HTTP-style status; mirrors response status code'),
+  "code": zod.number().optional().describe('HTTP-style status; mirrors response status code'),
   "status": zod.union([APITwitterStatus,APIBlueskyStatus,APIMastodonStatus,APIInstagramStatus,APIThreadsStatus,APIStatusTombstone]).nullable().describe('Focal post, or a tombstone when the post is unavailable'),
-  "thread": zod.array(zod.union([APITwitterStatus,APIBlueskyStatus,APIMastodonStatus,APIInstagramStatus,APIThreadsStatus,APIStatusTombstone])).nullable(),
-  "author": APIUser.nullable()
+  "thread": zod.array(zod.union([APITwitterStatus,APIBlueskyStatus,APIMastodonStatus,APIInstagramStatus,APIThreadsStatus,APIStatusTombstone])).nullish(),
+  "author": APIUser.nullish()
 });
 
 export type SocialThread = zod.input<typeof SocialThread>;

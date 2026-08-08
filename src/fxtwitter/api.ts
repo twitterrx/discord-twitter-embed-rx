@@ -3,6 +3,7 @@ import logger from "@/utils/logger";
 
 import { get2StatusId } from "./generated/default";
 import { SocialThread, type SocialThreadOutput } from "./generated/model";
+import { describeSocialThreadFailure } from "./statusValidationError";
 
 export class FxTwitterApi {
   /**
@@ -25,9 +26,13 @@ export class FxTwitterApi {
 
       const parsed = SocialThread.safeParse(data);
       if (!parsed.success) {
+        // union の全ブランチ分を並べても原因が埋もれるだけなので、該当ブランチに絞る
+        const failure = describeSocialThreadFailure(data, parsed.error);
         logger.error("FxTwitterApi: Response validation failed", {
           url,
-          issues: parsed.error.issues,
+          type: failure.type,
+          provider: failure.provider,
+          issues: failure.issues,
           duration: `${duration}ms`,
         });
         return undefined;

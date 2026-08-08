@@ -114,7 +114,7 @@ export type APIMastodonStatusMediaVideosItem = {
   duration: number;
   filesize?: number;
   formats: APIMastodonStatusMediaVideosItemFormatsItem[];
-  publisher?: APIUser & (unknown | null);
+  publisher?: APIUser | null;
 };
 export type APIMastodonStatusMediaAllItem = {
   id?: string;
@@ -148,7 +148,7 @@ export type APIMastodonStatusMediaAllItem = {
   height?: number;
   width?: number;
 })[];
-  publisher?: APIUser & (unknown | null);
+  publisher?: APIUser | null;
 } | {
   id?: string;
   format?: string;
@@ -303,7 +303,7 @@ export type APIMastodonStatus = {
   url: string;
   text: string;
   created_at: string;
-  created_timestamp: number;
+  created_timestamp?: number;
   likes: number;
   reposts: number;
   quotes?: number;
@@ -311,16 +311,16 @@ export type APIMastodonStatus = {
   quote?: APIMastodonStatus | APIStatusTombstone;
   poll?: APIMastodonStatusPoll;
   author: APIUser;
-  media: APIMastodonStatusMedia;
-  raw_text: APIMastodonStatusRawText;
+  media?: APIMastodonStatusMedia;
+  raw_text?: APIMastodonStatusRawText;
   /** @nullable */
-  lang: string | null;
+  lang?: string | null;
   translation?: APIMastodonStatusTranslation;
-  possibly_sensitive: boolean;
-  replying_to: APIReplyingTo | null;
+  possibly_sensitive?: boolean;
+  replying_to?: APIReplyingTo | null;
   /** @nullable */
-  source: string | null;
-  embed_card: APIMastodonStatusEmbedCard;
+  source?: string | null;
+  embed_card?: APIMastodonStatusEmbedCard;
   provider: APIMastodonStatusProvider;
   reposted_by?: APIRepostedBy | null;
 };
@@ -331,7 +331,7 @@ export const APIMastodonStatus: zod.ZodType<APIMastodonStatus> = zod.object({
   "url": zod.string(),
   "text": zod.string(),
   "created_at": zod.string(),
-  "created_timestamp": zod.number(),
+  "created_timestamp": zod.number().optional(),
   "likes": zod.number(),
   "reposts": zod.number(),
   "quotes": zod.number().optional(),
@@ -386,7 +386,7 @@ export const APIMastodonStatus: zod.ZodType<APIMastodonStatus> = zod.object({
   "height": zod.number().optional(),
   "width": zod.number().optional()
 })),
-  "publisher": APIUser.and(zod.unknown().nullable()).optional()
+  "publisher": APIUser.nullish()
 })).optional(),
   "all": zod.array(zod.union([zod.object({
   "id": zod.string().optional(),
@@ -417,7 +417,7 @@ export const APIMastodonStatus: zod.ZodType<APIMastodonStatus> = zod.object({
   "height": zod.number().optional(),
   "width": zod.number().optional()
 })),
-  "publisher": APIUser.and(zod.unknown().nullable()).optional()
+  "publisher": APIUser.nullish()
 }),zod.object({
   "id": zod.string().optional(),
   "format": zod.string().optional(),
@@ -487,7 +487,7 @@ export const APIMastodonStatus: zod.ZodType<APIMastodonStatus> = zod.object({
 }).optional()
 })
 }).optional()
-}),
+}).optional(),
   "raw_text": zod.object({
   "text": zod.string(),
   "facets": zod.array(zod.object({
@@ -498,8 +498,8 @@ export const APIMastodonStatus: zod.ZodType<APIMastodonStatus> = zod.object({
   "display": zod.string().optional(),
   "id": zod.string().optional()
 }))
-}),
-  "lang": zod.string().nullable(),
+}).optional(),
+  "lang": zod.string().nullish(),
   "translation": zod.object({
   "text": zod.string(),
   "source_lang": zod.string(),
@@ -507,10 +507,10 @@ export const APIMastodonStatus: zod.ZodType<APIMastodonStatus> = zod.object({
   "target_lang": zod.string(),
   "provider": zod.string()
 }).optional(),
-  "possibly_sensitive": zod.boolean(),
-  "replying_to": APIReplyingTo,
-  "source": zod.string().nullable(),
-  "embed_card": zod.enum(['tweet', 'summary', 'summary_large_image', 'player']),
+  "possibly_sensitive": zod.boolean().optional(),
+  "replying_to": APIReplyingTo.optional(),
+  "source": zod.string().nullish(),
+  "embed_card": zod.enum(['tweet', 'summary', 'summary_large_image', 'player']).optional(),
   "provider": zod.enum(['mastodon']),
   "reposted_by": APIRepostedBy.optional()
 });

@@ -1,0 +1,97 @@
+{
+    "status": {
+        "type": "status",
+        "url": "https://x.com/jack/status/20",
+        "id": "20",
+        "text": "just setting up my twttr",
+        "raw_text": {
+            "text": "just setting up my twttr",
+            "display_text_range": [
+                0,
+                24
+            ],
+            "facets": []
+        },
+        "author": {
+            "screen_name": "jack",
+            "url": "https://x.com/jack",
+            "id": "12",
+            "followers": 10991926,
+            "following": 3,
+            "likes": 40118,
+            "media_count": 2973,
+            "statuses": 30866,
+            "name": "jack",
+            "description": "no state is the best state",
+            "raw_description": {
+                "text": "no state is the best state",
+                "facets": []
+            },
+            "location": "",
+            "banner_url": "https://pbs.twimg.com/profile_banners/12/1742427520",
+            "avatar_url": "https://pbs.twimg.com/profile_images/1661201415899951105/azNjKOSH_200x200.jpg",
+            "joined": "Tue Mar 21 20:50:14 +0000 2006",
+            "protected": false,
+            "website": {
+                "url": "http://primal.net/jack",
+                "display_url": "primal.net/jack"
+            },
+            "verification": {
+                "verified": true,
+                "verified_at": null,
+                "type": "individual"
+            },
+            "type": "profile"
+        },
+        "replies": 17978,
+        "reposts": 124784,
+        "likes": 310881,
+        "bookmarks": 21362,
+        "quotes": 6902,
+        "embed_card": "tweet",
+        "created_at": "Tue Mar 21 20:50:14 +0000 2006",
+        "created_timestamp": 1142974214,
+        "views": null,
+        "is_note_tweet": false,
+        "community_note": null,
+        "lang": "en",
+        "replying_to": null,
+        "media": {},
+        "source": "Twitter Web Client",
+        "provider": "twitter",
+        "reposted_by": null
+    },
+    "thread": null,
+    "author": {
+        "screen_name": "jack",
+        "url": "https://x.com/jack",
+        "id": "12",
+        "followers": 10991926,
+        "following": 3,
+        "likes": 40118,
+        "media_count": 2973,
+        "statuses": 30866,
+        "name": "jack",
+        "description": "no state is the best state",
+        "raw_description": {
+            "text": "no state is the best state",
+            "facets": []
+        },
+        "location": "",
+        "banner_url": "https://pbs.twimg.com/profile_banners/12/1742427520",
+        "avatar_url": "https://pbs.twimg.com/profile_images/1661201415899951105/azNjKOSH_200x200.jpg",
+        "joined": "Tue Mar 21 20:50:14 +0000 2006",
+        "protected": false,
+        "website": {
+            "url": "http://primal.net/jack",
+            "display_url": "primal.net/jack"
+        },
+        "verification": {
+            "verified": true,
+            "verified_at": null,
+            "type": "individual"
+        },
+        "type": "profile"
+    },
+    "code": 200
+}

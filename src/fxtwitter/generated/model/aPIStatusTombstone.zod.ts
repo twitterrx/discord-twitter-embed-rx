@@ -15,9 +15,9 @@ export const aPIStatusTombstoneAuthorRawDescriptionFacetsItemIndicesMax = 2;
 
 export const APIStatusTombstone = zod.object({
   "type": zod.enum(['tombstone']).describe('Placeholder for an unavailable post (quote\/thread).'),
-  "provider": zod.enum(['twitter', 'bluesky', 'mastodon', 'tiktok', 'instagram', 'threads']),
-  "reason": zod.enum(['deleted', 'suspended', 'private', 'blocked', 'unavailable']).describe('Why the post is unavailable'),
-  "message": zod.string(),
+  "provider": zod.string().optional(),
+  "reason": zod.string().optional().describe('Why the post is unavailable'),
+  "message": zod.string().optional(),
   "id": zod.string().optional(),
   "url": zod.string().optional(),
   "author": zod.object({
