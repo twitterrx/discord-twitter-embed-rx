@@ -10,18 +10,15 @@ ADR 0001 の通り、OpenAPI を外部 API 契約の source of truth とし、or
 生成してレスポンスを検証している。スペックが実レスポンスと乖離すると、検証が正常な
 レスポンスを弾き、Embed が黙って展開されなくなる。
 
-OpenAPI 3.0 には「null になりうる `$ref`」を標準に沿って書く方法が**存在しない**。
-3.0.3 の Schema Object は `nullable` をこう定義している。
+OpenAPI 3.0 で「null になりうる `$ref`」を書くのは難しい。3.0.3 の Schema Object は
+`nullable` をこう定義している。
 
 > A `true` value adds `"null"` to the allowed type specified by the `type` keyword,
 > only if `type` is explicitly defined within the same Schema Object.
 
 `nullable` が効くのは、同じ Schema Object に `type` が明示されている場合だけである。
-`$ref` を指すスキーマに `type` は書けないため、どう書いても標準上は null を許可できない。
-
-つまり 3.0 で使えるのは「orval が意図した Zod を生成する暫定表現」のいずれかでしかなく、
-どれを選んでも標準準拠のツールに対する保証はない。実際に使った3つの書き方は、
-いずれも別の形で壊れる。
+`$ref` を指すスキーマに `type` は書けないため、`$ref` の隣に `nullable` を置く形は
+どう書いても標準上は効かない。実際に使った3つの書き方は、いずれも別の形で壊れる。
 
 | 書き方 | 生成される Zod | 問題 |
 | --- | --- | --- |
@@ -29,16 +26,19 @@ OpenAPI 3.0 には「null になりうる `$ref`」を標準に沿って書く�
 | `{ "$ref": ..., "nullable": true }` | `APIUser.nullish()` | 同上に加えて、3.0 の Reference Object は `$ref` 以外のプロパティを許さない。標準準拠のツールは sibling ごと無視する |
 | `{ "allOf": [{ "$ref": ... }, { "nullable": true }] }` | `APIUser.and(zod.unknown().nullable())` | orval が `nullable` を落とす。null が `$ref` 側で弾かれ、**実際に壊れた** |
 
-1つ目は #598 で「3.0 の正しい形」として採用したが、上記の通り標準上の裏付けはない。
-orval の挙動に依存した暫定表現だった。
+1つ目は #598 で「3.0 の正しい形」として採用したが、標準上の裏付けはなく、orval の挙動に
+依存した暫定表現だった。
 
-#598 でこの事故を3回踏んだ。
+3.0 でも標準準拠に書く方法自体は存在する。`anyOf` で null 専用のスキーマを合成すればよい
+（Alternatives を参照）。ただし「null」と言うためだけに、実データと無関係な `type` と
+`nullable` と `enum` の3つを協調させる必要がある。我々はこれを書かず、代わりに壊れた
+書き方を3つ書いた。#598 で踏んだ事故は3件。
 
 - `media.videos[].publisher` — 動画ツイートが全滅
 - `SocialThread.author` / `SocialConversation.author`
 - `community.admin` / `community.creator` — コミュニティ投稿が全滅
 
-一般的な OpenAPI validator では検出できない。`@apidevtools/swagger-parser` は dereference
+壊れた3つの書き方は、一般的な OpenAPI validator では検出できない。`@apidevtools/swagger-parser` は dereference
 してから検証するため、`$ref` の sibling は消えた後の姿しか見ない。実際、修正前のスペックも
 検証を通ってしまった。
 
@@ -60,6 +60,40 @@ orval の挙動に依存した暫定表現だった。
 - orval は 8.22.0 のままとする。3.1 の扱いに新しいバージョンは必要ない。
 
 ## Alternatives
+
+### 3.0 のまま、`anyOf` で標準準拠に書く
+
+3.0 でも、null だけを受理するスキーマを `anyOf` で合成すれば標準に沿って書ける。
+
+```yaml
+anyOf:
+  - $ref: "#/components/schemas/APIUser"
+  - type: string
+    nullable: true
+    enum: [null]
+```
+
+2番目の分岐は同じ Schema Object に `type` があるため `nullable` が有効になり、
+`enum: [null]` で null だけに絞られる。手元で検証したところ、
+`@apidevtools/swagger-parser` は OAS 3.0.3 として validation に成功し、
+orval 8.22.0 は `zod.union([APIUser, zod.literal(null).nullable()])` を生成した。
+挙動も正しい（APIUser / null / undefined を受理し、無関係な値を拒否）。
+
+つまり「3.0 には標準準拠の方法が存在しない」というのは誤りで、**存在するが冗長で
+間違えやすい**が正しい。3.1 の同じ意味の表現と並べると差がはっきりする。
+
+```yaml
+# 3.1
+anyOf:
+  - $ref: "#/components/schemas/APIUser"
+  - type: "null"
+```
+
+3.0 版は「null」と言うためだけに、実データと無関係な `type: string` と `nullable` と
+`enum` の3つを協調させる必要がある。読み手はこの3行が「null 専用の分岐」だと
+読み解かなければならない。実際、我々はこれを書かず、壊れた書き方を3つ書いた。
+
+採用しない。標準準拠であることと、間違えずに書けることは別である。
 
 ### 3.0 のまま、書き方を1つに固定して構造テストで強制する
 
