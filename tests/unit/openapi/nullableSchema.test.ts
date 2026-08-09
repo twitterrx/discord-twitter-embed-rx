@@ -10,14 +10,16 @@ import { describe, expect, it } from "vitest";
  *   { "type": ["string", "null"] }
  *   { "anyOf": [{ "$ref": ... }, { "type": "null" }] }
  *
- * 3.0 では「null になりうる $ref」の書き方が実質1つしかなく、外れると orval が
- * 静かに間違った Zod を吐いた。この事故を3回繰り返している（#598）。
+ * 3.0 では「null になりうる $ref」を標準に沿って書く方法が存在しない。3.0.3 の nullable は
+ * 同じ Schema Object に type が明示されている場合しか効かず、$ref を指すスキーマに type は
+ * 書けないため。使えるのは orval が意図した Zod を吐く暫定表現だけで、どれを選んでも
+ * 標準準拠のツールに対する保証はない。実際に3回壊した（#598）。詳細は ADR 0005。
  *
- *   { "$ref": ..., "nullable": true }               → 標準準拠のツールが sibling を無視する
- *   { "allOf": [{ "$ref": ... }, { "nullable": true }] } → orval が nullable を落とす
+ *   { "$ref": ..., "nullable": true }                    → 標準準拠のツールが sibling を無視する
+ *   { "allOf": [{ "$ref": ... }, { "nullable": true }] }  → orval が nullable を落とす
  *
- * 3.1 ではどちらも書く動機が消える。nullable が1つも残っていないことを検査すれば、
- * 両方の入口をまとめて塞げる。
+ * 3.1 では書き方が1つに定まる。nullable が1つも残っていないことを検査すれば、
+ * 暫定表現の入口をまとめて塞げる。
  */
 const SPEC_DIR = join(__dirname, "../../../openapi");
 
