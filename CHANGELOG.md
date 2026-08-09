@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.1](https://github.com/rx-twitter/rx-twitter/compare/v3.0.0...v3.0.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **fxtwitter:** possibly_sensitive の欠落でレスポンス検証が落ちるのを修正 ([d172e32](https://github.com/rx-twitter/rx-twitter/commit/d172e32a40a3db60d055395859546676484f1314))
+* **fxtwitter:** publisher が null の動画ツイートで検証が落ちるのを修正 ([a2c7b67](https://github.com/rx-twitter/rx-twitter/commit/a2c7b67f88add25db0ce761c39a18c7299d58311))
+* **fxtwitter:** 実 API と乖離したレスポンス検証で Embed が展開されない問題を修正 ([79db911](https://github.com/rx-twitter/rx-twitter/commit/79db911b5adfd8bb417daeed7b0e6c63d1067027))
+* **openapi:** $ref の sibling nullable を 3.0 標準の表現に直す ([3799ce8](https://github.com/rx-twitter/rx-twitter/commit/3799ce8238de8b33d0731ac5d4b95af4e5118874))
+* **openapi:** 読んでいない author フィールドの必須指定を外す ([1408288](https://github.com/rx-twitter/rx-twitter/commit/14082886c339aa170fedbdb7bea799bd39250dfd))
+
 ## [3.0.0](https://github.com/rx-twitter/rx-twitter/compare/v2.8.0...v3.0.0) (2026-08-01)
 
 
