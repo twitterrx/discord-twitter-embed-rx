@@ -1,4 +1,4 @@
-openapi: 3.0.0
+openapi: 3.1.0
 info:
   title: VxTwitter (BetterTwitFix) API
   version: 1.0.0
@@ -110,50 +110,43 @@ components:
         possibly_sensitive:
           type: boolean
         qrtURL:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: 引用ツイートのURL (引用がない場合は null)
         qrt:
-          nullable: true
           description: 引用ツイート (引用がない場合は null)
-          allOf:
+          anyOf:
             - $ref: "#/components/schemas/VxTwitterStatus"
+            - type: "null"
         communityNote:
-          type: string
-          nullable: true
+          type: [string, "null"]
         allSameType:
           type: boolean
         hasMedia:
           type: boolean
         combinedMediaUrl:
-          type: string
-          nullable: true
+          type: [string, "null"]
         pollData:
-          nullable: true
-          allOf:
+          anyOf:
             - $ref: "#/components/schemas/PollData"
+            - type: "null"
         article:
-          nullable: true
-          allOf:
+          anyOf:
             - $ref: "#/components/schemas/Article"
+            - type: "null"
         lang:
-          type: string
-          nullable: true
+          type: [string, "null"]
         replyingTo:
-          type: string
-          nullable: true
+          type: [string, "null"]
         replyingToID:
-          type: string
-          nullable: true
+          type: [string, "null"]
         fetched_on:
           type: number
         retweetURL:
-          type: string
-          nullable: true
+          type: [string, "null"]
         translation:
-          nullable: true
-          allOf:
+          anyOf:
             - $ref: "#/components/schemas/Translation"
+            - type: "null"
 
     MediaExtended:
       type: object
@@ -162,13 +155,11 @@ components:
         - url
       properties:
         altText:
-          type: string
-          nullable: true
+          type: [string, "null"]
         size:
           $ref: "#/components/schemas/MediaSize"
         thumbnail_url:
-          type: string
-          nullable: true
+          type: [string, "null"]
         type:
           type: string
           enum:
@@ -179,11 +170,9 @@ components:
         url:
           type: string
         duration_millis:
-          type: number
-          nullable: true
+          type: [number, "null"]
         id_str:
-          type: string
-          nullable: true
+          type: [string, "null"]
 
     MediaSize:
       type: object
@@ -219,8 +208,7 @@ components:
         preview_text:
           type: string
         image:
-          type: string
-          nullable: true
+          type: [string, "null"]
 
     Translation:
       type: object

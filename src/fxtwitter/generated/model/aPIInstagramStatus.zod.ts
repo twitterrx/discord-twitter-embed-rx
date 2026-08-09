@@ -387,7 +387,7 @@ export const APIInstagramStatus: zod.ZodType<APIInstagramStatus> = zod.object({
   "height": zod.number().optional(),
   "width": zod.number().optional()
 })),
-  "publisher": APIUser.nullish()
+  "publisher": zod.union([APIUser,zod.null()]).optional()
 })).optional(),
   "all": zod.array(zod.union([zod.object({
   "id": zod.string().optional(),
@@ -418,7 +418,7 @@ export const APIInstagramStatus: zod.ZodType<APIInstagramStatus> = zod.object({
   "height": zod.number().optional(),
   "width": zod.number().optional()
 })),
-  "publisher": APIUser.nullish()
+  "publisher": zod.union([APIUser,zod.null()]).optional()
 }),zod.object({
   "id": zod.string().optional(),
   "format": zod.string().optional(),
