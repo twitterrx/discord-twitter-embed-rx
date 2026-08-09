@@ -63,6 +63,57 @@ describe("FxTwitterApi", () => {
     expect(result).toBeUndefined();
   });
 
+  describe("検証失敗のログ", () => {
+    /**
+     * status は 6 ブランチの plain union なので、素の issues では全ブランチ分が並んで
+     * 原因が埋もれる。type / provider から絞った issue が記録されることを固定する。
+     */
+    const invalidTwitterStatus = {
+      code: 200,
+      // id を欠く Twitter status
+      status: {
+        type: "status",
+        provider: "twitter",
+        url: "https://x.com/u/status/123",
+        text: "hello",
+        created_at: "2024-01-01T00:00:00.000Z",
+        likes: 1,
+        reposts: 1,
+        replies: 1,
+        author: { type: "profile", id: "u", name: "U", screen_name: "u", avatar_url: null },
+        media: {},
+      },
+    };
+
+    const errorMeta = async () => {
+      // 実スキーマで落とすため safeParse のモックを外す
+      vi.mocked(SocialThread.safeParse).mockRestore();
+      mockGet2StatusId.mockResolvedValue(invalidTwitterStatus as never);
+
+      await api.getPostInformation("https://x.com/user/status/123");
+
+      const [, meta] = vi.mocked(logger.error).mock.calls[0] as unknown as [
+        string,
+        Record<string, unknown>,
+      ];
+      return meta;
+    };
+
+    it("該当ブランチの issue に絞って記録する", async () => {
+      const meta = await errorMeta();
+
+      expect(meta.issues).toHaveLength(1);
+      expect(JSON.stringify(meta.issues)).toContain('"id"');
+    });
+
+    it("判別に使った type と provider を添える", async () => {
+      const meta = await errorMeta();
+
+      expect(meta.type).toBe("status");
+      expect(meta.provider).toBe("twitter");
+    });
+  });
+
   it("id を抽出できない URL は undefined を返す", async () => {
     const result = await api.getPostInformation("https://example.com/foo/bar");
 

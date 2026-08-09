@@ -1,5 +1,5 @@
 {
-  "openapi": "3.0.0",
+  "openapi": "3.1.0",
   "info": {
     "title": "FxTwitter API",
     "version": "2.0.0",
@@ -21,7 +21,6 @@
             "description": "HTTP-style status; mirrors response status code"
           },
           "status": {
-            "nullable": true,
             "anyOf": [
               {
                 "$ref": "#/components/schemas/APITwitterStatus"
@@ -40,13 +39,18 @@
               },
               {
                 "$ref": "#/components/schemas/APIStatusTombstone"
+              },
+              {
+                "type": "null"
               }
             ],
             "description": "Focal post, or a tombstone when the post is unavailable"
           },
           "thread": {
-            "type": "array",
-            "nullable": true,
+            "type": [
+              "array",
+              "null"
+            ],
             "items": {
               "anyOf": [
                 {
@@ -71,19 +75,18 @@
             }
           },
           "author": {
-            "nullable": true,
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/APIUser"
+              },
+              {
+                "type": "null"
               }
             ]
           }
         },
         "required": [
-          "code",
-          "status",
-          "thread",
-          "author"
+          "status"
         ]
       },
       "ApiQueryError": {
@@ -254,8 +257,10 @@
                       "type": "number"
                     },
                     "transcode_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "altText": {
                       "type": "string"
@@ -297,12 +302,16 @@
                       "type": "number"
                     },
                     "thumbnail_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "transcode_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "duration": {
                       "type": "number"
@@ -354,12 +363,12 @@
                       }
                     },
                     "publisher": {
-                      "allOf": [
+                      "anyOf": [
                         {
                           "$ref": "#/components/schemas/APIUser"
                         },
                         {
-                          "nullable": true
+                          "type": "null"
                         }
                       ]
                     }
@@ -404,8 +413,10 @@
                           "type": "number"
                         },
                         "transcode_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "altText": {
                           "type": "string"
@@ -444,12 +455,16 @@
                           "type": "number"
                         },
                         "thumbnail_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "transcode_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "duration": {
                           "type": "number"
@@ -501,12 +516,12 @@
                           }
                         },
                         "publisher": {
-                          "allOf": [
+                          "anyOf": [
                             {
                               "$ref": "#/components/schemas/APIUser"
                             },
                             {
-                              "nullable": true
+                              "type": "null"
                             }
                           ]
                         }
@@ -863,8 +878,10 @@
             ]
           },
           "lang": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "translation": {
             "type": "object",
@@ -900,8 +917,10 @@
             "$ref": "#/components/schemas/APIReplyingTo"
           },
           "source": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "embed_card": {
             "type": "string",
@@ -919,12 +938,16 @@
             ]
           },
           "views": {
-            "type": "number",
-            "nullable": true
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "bookmarks": {
-            "type": "number",
-            "nullable": true
+            "type": [
+              "number",
+              "null"
+            ]
           },
           "community": {
             "type": "object",
@@ -951,26 +974,28 @@
                 "type": "boolean"
               },
               "topic": {
-                "type": "string",
-                "nullable": true
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "admin": {
-                "allOf": [
+                "anyOf": [
                   {
                     "$ref": "#/components/schemas/APIUser"
                   },
                   {
-                    "nullable": true
+                    "type": "null"
                   }
                 ]
               },
               "creator": {
-                "allOf": [
+                "anyOf": [
                   {
                     "$ref": "#/components/schemas/APIUser"
                   },
                   {
-                    "nullable": true
+                    "type": "null"
                   }
                 ]
               },
@@ -1148,8 +1173,10 @@
                             "type": "string"
                           },
                           "ext_alt_text": {
-                            "type": "string",
-                            "nullable": true
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "ext_media_color": {
                             "type": "object",
@@ -1337,9 +1364,7 @@
                         },
                         "data": {
                           "type": "object",
-                          "additionalProperties": {
-                            "nullable": true
-                          }
+                          "additionalProperties": {}
                         },
                         "entityRanges": {
                           "type": "array",
@@ -1706,8 +1731,10 @@
                               "type": "string"
                             },
                             "ext_alt_text": {
-                              "type": "string",
-                              "nullable": true
+                              "type": [
+                                "string",
+                                "null"
+                              ]
                             },
                             "ext_media_color": {
                               "type": "object",
@@ -1898,8 +1925,10 @@
             "type": "boolean"
           },
           "community_note": {
-            "type": "object",
-            "nullable": true,
+            "type": [
+              "object",
+              "null"
+            ],
             "properties": {
               "text": {
                 "type": "string"
@@ -1997,23 +2026,11 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
-          "quotes",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
-          "provider",
-          "is_note_tweet",
-          "community_note",
-          "reposted_by"
+          "provider"
         ]
       },
       "APIBlueskyStatus": {
@@ -2172,8 +2189,10 @@
                       "type": "number"
                     },
                     "transcode_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "altText": {
                       "type": "string"
@@ -2215,12 +2234,16 @@
                       "type": "number"
                     },
                     "thumbnail_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "transcode_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "duration": {
                       "type": "number"
@@ -2272,12 +2295,12 @@
                       }
                     },
                     "publisher": {
-                      "allOf": [
+                      "anyOf": [
                         {
                           "$ref": "#/components/schemas/APIUser"
                         },
                         {
-                          "nullable": true
+                          "type": "null"
                         }
                       ]
                     }
@@ -2322,8 +2345,10 @@
                           "type": "number"
                         },
                         "transcode_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "altText": {
                           "type": "string"
@@ -2362,12 +2387,16 @@
                           "type": "number"
                         },
                         "thumbnail_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "transcode_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "duration": {
                           "type": "number"
@@ -2419,12 +2448,12 @@
                           }
                         },
                         "publisher": {
-                          "allOf": [
+                          "anyOf": [
                             {
                               "$ref": "#/components/schemas/APIUser"
                             },
                             {
-                              "nullable": true
+                              "type": "null"
                             }
                           ]
                         }
@@ -2772,8 +2801,10 @@
             ]
           },
           "lang": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "translation": {
             "type": "object",
@@ -2809,8 +2840,10 @@
             "$ref": "#/components/schemas/APIReplyingTo"
           },
           "source": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "embed_card": {
             "type": "string",
@@ -2837,18 +2870,10 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
           "provider"
         ]
       },
@@ -3002,8 +3027,10 @@
                       "type": "number"
                     },
                     "transcode_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "altText": {
                       "type": "string"
@@ -3045,12 +3072,16 @@
                       "type": "number"
                     },
                     "thumbnail_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "transcode_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "duration": {
                       "type": "number"
@@ -3102,12 +3133,12 @@
                       }
                     },
                     "publisher": {
-                      "allOf": [
+                      "anyOf": [
                         {
                           "$ref": "#/components/schemas/APIUser"
                         },
                         {
-                          "nullable": true
+                          "type": "null"
                         }
                       ]
                     }
@@ -3152,8 +3183,10 @@
                           "type": "number"
                         },
                         "transcode_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "altText": {
                           "type": "string"
@@ -3192,12 +3225,16 @@
                           "type": "number"
                         },
                         "thumbnail_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "transcode_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "duration": {
                           "type": "number"
@@ -3249,12 +3286,12 @@
                           }
                         },
                         "publisher": {
-                          "allOf": [
+                          "anyOf": [
                             {
                               "$ref": "#/components/schemas/APIUser"
                             },
                             {
-                              "nullable": true
+                              "type": "null"
                             }
                           ]
                         }
@@ -3602,8 +3639,10 @@
             ]
           },
           "lang": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "translation": {
             "type": "object",
@@ -3639,8 +3678,10 @@
             "$ref": "#/components/schemas/APIReplyingTo"
           },
           "source": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "embed_card": {
             "type": "string",
@@ -3667,18 +3708,10 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
           "provider"
         ]
       },
@@ -3832,8 +3865,10 @@
                       "type": "number"
                     },
                     "transcode_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "altText": {
                       "type": "string"
@@ -3875,12 +3910,16 @@
                       "type": "number"
                     },
                     "thumbnail_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "transcode_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "duration": {
                       "type": "number"
@@ -3932,12 +3971,12 @@
                       }
                     },
                     "publisher": {
-                      "allOf": [
+                      "anyOf": [
                         {
                           "$ref": "#/components/schemas/APIUser"
                         },
                         {
-                          "nullable": true
+                          "type": "null"
                         }
                       ]
                     }
@@ -3982,8 +4021,10 @@
                           "type": "number"
                         },
                         "transcode_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "altText": {
                           "type": "string"
@@ -4022,12 +4063,16 @@
                           "type": "number"
                         },
                         "thumbnail_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "transcode_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "duration": {
                           "type": "number"
@@ -4079,12 +4124,12 @@
                           }
                         },
                         "publisher": {
-                          "allOf": [
+                          "anyOf": [
                             {
                               "$ref": "#/components/schemas/APIUser"
                             },
                             {
-                              "nullable": true
+                              "type": "null"
                             }
                           ]
                         }
@@ -4432,8 +4477,10 @@
             ]
           },
           "lang": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "translation": {
             "type": "object",
@@ -4469,8 +4516,10 @@
             "$ref": "#/components/schemas/APIReplyingTo"
           },
           "source": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "embed_card": {
             "type": "string",
@@ -4500,18 +4549,10 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
           "provider"
         ]
       },
@@ -4665,8 +4706,10 @@
                       "type": "number"
                     },
                     "transcode_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "altText": {
                       "type": "string"
@@ -4708,12 +4751,16 @@
                       "type": "number"
                     },
                     "thumbnail_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "transcode_url": {
-                      "type": "string",
-                      "nullable": true
+                      "type": [
+                        "string",
+                        "null"
+                      ]
                     },
                     "duration": {
                       "type": "number"
@@ -4765,12 +4812,12 @@
                       }
                     },
                     "publisher": {
-                      "allOf": [
+                      "anyOf": [
                         {
                           "$ref": "#/components/schemas/APIUser"
                         },
                         {
-                          "nullable": true
+                          "type": "null"
                         }
                       ]
                     }
@@ -4815,8 +4862,10 @@
                           "type": "number"
                         },
                         "transcode_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "altText": {
                           "type": "string"
@@ -4855,12 +4904,16 @@
                           "type": "number"
                         },
                         "thumbnail_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "transcode_url": {
-                          "type": "string",
-                          "nullable": true
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "duration": {
                           "type": "number"
@@ -4912,12 +4965,12 @@
                           }
                         },
                         "publisher": {
-                          "allOf": [
+                          "anyOf": [
                             {
                               "$ref": "#/components/schemas/APIUser"
                             },
                             {
-                              "nullable": true
+                              "type": "null"
                             }
                           ]
                         }
@@ -5265,8 +5318,10 @@
             ]
           },
           "lang": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "translation": {
             "type": "object",
@@ -5302,8 +5357,10 @@
             "$ref": "#/components/schemas/APIReplyingTo"
           },
           "source": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "embed_card": {
             "type": "string",
@@ -5333,18 +5390,10 @@
           "url",
           "text",
           "created_at",
-          "created_timestamp",
           "likes",
           "reposts",
           "replies",
           "author",
-          "media",
-          "raw_text",
-          "lang",
-          "possibly_sensitive",
-          "replying_to",
-          "source",
-          "embed_card",
           "provider"
         ]
       },
@@ -5359,25 +5408,10 @@
             "description": "Placeholder for an unavailable post (quote/thread)."
           },
           "provider": {
-            "type": "string",
-            "enum": [
-              "twitter",
-              "bluesky",
-              "mastodon",
-              "tiktok",
-              "instagram",
-              "threads"
-            ]
+            "type": "string"
           },
           "reason": {
             "type": "string",
-            "enum": [
-              "deleted",
-              "suspended",
-              "private",
-              "blocked",
-              "unavailable"
-            ],
             "description": "Why the post is unavailable"
           },
           "message": {
@@ -5409,12 +5443,16 @@
                 "type": "string"
               },
               "avatar_url": {
-                "type": "string",
-                "nullable": true
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "banner_url": {
-                "type": "string",
-                "nullable": true
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "description": {
                 "type": "string"
@@ -5496,8 +5534,10 @@
                 "type": "string"
               },
               "website": {
-                "type": "object",
-                "nullable": true,
+                "type": [
+                  "object",
+                  "null"
+                ],
                 "properties": {
                   "url": {
                     "type": "string"
@@ -5512,8 +5552,10 @@
                 ]
               },
               "birthday": {
-                "type": "object",
-                "nullable": true,
+                "type": [
+                  "object",
+                  "null"
+                ],
                 "properties": {
                   "day": {
                     "type": "number"
@@ -5533,8 +5575,10 @@
                     "type": "boolean"
                   },
                   "type": {
-                    "type": "string",
-                    "nullable": true,
+                    "type": [
+                      "string",
+                      "null"
+                    ],
                     "enum": [
                       "organization",
                       "government",
@@ -5543,8 +5587,10 @@
                     ]
                   },
                   "verified_at": {
-                    "type": "string",
-                    "nullable": true
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   },
                   "identity_verified": {
                     "type": "boolean"
@@ -5574,10 +5620,7 @@
           }
         },
         "required": [
-          "type",
-          "provider",
-          "reason",
-          "message"
+          "type"
         ]
       },
       "APIUser": {
@@ -5600,12 +5643,16 @@
             "type": "string"
           },
           "avatar_url": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "banner_url": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "description": {
             "type": "string"
@@ -5687,8 +5734,10 @@
             "type": "string"
           },
           "website": {
-            "type": "object",
-            "nullable": true,
+            "type": [
+              "object",
+              "null"
+            ],
             "properties": {
               "url": {
                 "type": "string"
@@ -5703,8 +5752,10 @@
             ]
           },
           "birthday": {
-            "type": "object",
-            "nullable": true,
+            "type": [
+              "object",
+              "null"
+            ],
             "properties": {
               "day": {
                 "type": "number"
@@ -5724,8 +5775,10 @@
                 "type": "boolean"
               },
               "type": {
-                "type": "string",
-                "nullable": true,
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "enum": [
                   "organization",
                   "government",
@@ -5734,8 +5787,10 @@
                 ]
               },
               "verified_at": {
-                "type": "string",
-                "nullable": true
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "identity_verified": {
                 "type": "boolean"
@@ -5757,29 +5812,15 @@
           }
         },
         "required": [
-          "type",
-          "id",
           "name",
-          "screen_name",
-          "avatar_url",
-          "banner_url",
-          "description",
-          "raw_description",
-          "location",
-          "url",
-          "protected",
-          "followers",
-          "following",
-          "statuses",
-          "media_count",
-          "likes",
-          "joined",
-          "website"
+          "screen_name"
         ]
       },
       "APIReplyingTo": {
-        "type": "object",
-        "nullable": true,
+        "type": [
+          "object",
+          "null"
+        ],
         "properties": {
           "screen_name": {
             "type": "string",
@@ -5808,8 +5849,10 @@
         ]
       },
       "APIRepostedBy": {
-        "type": "object",
-        "nullable": true,
+        "type": [
+          "object",
+          "null"
+        ],
         "properties": {
           "id": {
             "type": "string"
@@ -5821,8 +5864,10 @@
             "type": "string"
           },
           "avatar_url": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "url": {
             "type": "string"
@@ -5838,19 +5883,25 @@
         "type": "object",
         "properties": {
           "based_in": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "location_accurate": {
             "type": "boolean"
           },
           "created_country_accurate": {
-            "type": "boolean",
-            "nullable": true
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "source": {
-            "type": "string",
-            "nullable": true
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "username_changes": {
             "type": "object",
@@ -5859,8 +5910,10 @@
                 "type": "number"
               },
               "last_changed_at": {
-                "type": "string",
-                "nullable": true
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             },
             "required": [

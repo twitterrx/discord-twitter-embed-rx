@@ -170,6 +170,12 @@ scope は省略可能。description は日本語でも英語でもよいが、�
 - モック: 外部依存 (Redis, Discord, HTTP) はテスト用の Mock クラスを使用。
 - テストランナー: Vitest（globals: true, sourceMap 対応）。
 - カバレッジ: vitest --coverage（v8 provider）。
+- 外部 API レスポンスの fixture: `tests/fixtures/fxtwitter/` に実 API の payload をそのまま置く。手書きモックだけではスキーマの思い込みをテストしてしまう。
+- 上流 API のドリフト検知: 保存済み fixture は自スキーマの回帰しか守れないため、実 API を叩く契約テストを `tests/integration/fxtwitterContract.test.ts` に置く。ネットワーク依存で不安定なので既定は skip、`RUN_LIVE_API_TESTS=1` でオプトインする。
+
+  ```bash
+  RUN_LIVE_API_TESTS=1 npx vitest run tests/integration/fxtwitterContract.test.ts
+  ```
 
 ### Redis キー命名規則
 

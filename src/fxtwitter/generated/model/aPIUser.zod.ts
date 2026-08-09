@@ -14,13 +14,13 @@ export const aPIUserRawDescriptionFacetsItemIndicesMax = 2;
 
 
 export const APIUser = zod.object({
-  "type": zod.enum(['profile']).describe('Discriminator: full user profile (API v2).'),
-  "id": zod.string(),
+  "type": zod.enum(['profile']).optional().describe('Discriminator: full user profile (API v2).'),
+  "id": zod.string().optional(),
   "name": zod.string(),
   "screen_name": zod.string(),
-  "avatar_url": zod.string().nullable(),
-  "banner_url": zod.string().nullable(),
-  "description": zod.string(),
+  "avatar_url": zod.string().nullish(),
+  "banner_url": zod.string().nullish(),
+  "description": zod.string().optional(),
   "raw_description": zod.object({
   "text": zod.string(),
   "facets": zod.array(zod.object({
@@ -31,20 +31,20 @@ export const APIUser = zod.object({
   "display": zod.string().optional(),
   "id": zod.string().optional()
 }))
-}),
-  "location": zod.string(),
-  "url": zod.string(),
-  "protected": zod.boolean(),
-  "followers": zod.number(),
-  "following": zod.number(),
-  "statuses": zod.number(),
-  "media_count": zod.number(),
-  "likes": zod.number(),
-  "joined": zod.string(),
+}).optional(),
+  "location": zod.string().optional(),
+  "url": zod.string().optional(),
+  "protected": zod.boolean().optional(),
+  "followers": zod.number().optional(),
+  "following": zod.number().optional(),
+  "statuses": zod.number().optional(),
+  "media_count": zod.number().optional(),
+  "likes": zod.number().optional(),
+  "joined": zod.string().optional(),
   "website": zod.object({
   "url": zod.string(),
   "display_url": zod.string()
-}).nullable(),
+}).nullish(),
   "birthday": zod.object({
   "day": zod.number().optional(),
   "month": zod.number().optional(),

@@ -78,19 +78,19 @@ export const VxTwitterStatus: zod.ZodType<VxTwitterStatus> = zod.object({
   "conversationID": zod.string().optional(),
   "possibly_sensitive": zod.boolean().optional(),
   "qrtURL": zod.string().nullish().describe('引用ツイートのURL (引用がない場合は null)'),
-  "qrt": zod.lazy(() => VxTwitterStatus).nullish().describe('引用ツイート (引用がない場合は null)'),
+  "qrt": zod.union([zod.lazy(() => VxTwitterStatus),zod.null()]).optional().describe('引用ツイート (引用がない場合は null)'),
   "communityNote": zod.string().nullish(),
   "allSameType": zod.boolean().optional(),
   "hasMedia": zod.boolean().optional(),
   "combinedMediaUrl": zod.string().nullish(),
-  "pollData": PollData.nullish(),
-  "article": Article.nullish(),
+  "pollData": zod.union([PollData,zod.null()]).optional(),
+  "article": zod.union([Article,zod.null()]).optional(),
   "lang": zod.string().nullish(),
   "replyingTo": zod.string().nullish(),
   "replyingToID": zod.string().nullish(),
   "fetched_on": zod.number().optional(),
   "retweetURL": zod.string().nullish(),
-  "translation": Translation.nullish()
+  "translation": zod.union([Translation,zod.null()]).optional()
 });
 
 export type VxTwitterStatusOutput = zod.output<typeof VxTwitterStatus>;

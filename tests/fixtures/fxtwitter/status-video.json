@@ -1,0 +1,185 @@
+{
+    "status": {
+        "type": "status",
+        "url": "https://x.com/bou128/status/1870044090072739960",
+        "id": "1870044090072739960",
+        "text": "\u30de\u30d5\u30e9\u30fc\u88c5\u7740\ud83e\udde3",
+        "raw_text": {
+            "text": "\u30de\u30d5\u30e9\u30fc\u88c5\u7740\ud83e\udde3 https://t.co/n0nXmnYqYJ",
+            "display_text_range": [
+                0,
+                7
+            ],
+            "facets": [
+                {
+                    "type": "media",
+                    "indices": [
+                        8,
+                        31
+                    ],
+                    "id": "1870044020577349632",
+                    "display": "pic.x.com/n0nXmnYqYJ",
+                    "original": "https://t.co/n0nXmnYqYJ",
+                    "replacement": "https://x.com/bou128/status/1870044090072739960/video/1"
+                }
+            ]
+        },
+        "author": {
+            "screen_name": "bou128",
+            "url": "https://x.com/bou128",
+            "id": "258999740",
+            "followers": 318033,
+            "following": 73,
+            "likes": 2966,
+            "media_count": 5218,
+            "statuses": 14041,
+            "name": "AKR\ud83c\udf31\u2467\u5dfb\u767a\u58f2\u4e2d",
+            "description": "\u500b\u4eba\u7684\u306a\u65e5\u8a18\u5e33(\u305f\u307e\u306b\u7d75\u65e5\u8a18)\u250a\u7d75\u3084\u307e\u3093\u304c\u3092\u63cf\u304f\u4ed5\u4e8b\u3068\u3001web\u30b5\u30a4\u30c8\u3092\u3064\u304f\u308b\u4ed5\u4e8b\u3092\u3057\u3066\u3044\u307e\u3059\u250a\u308d\u3093\u3055\u3093\u305f\u3061\u306e\u672c\u2192\u9ed2\u732b\u308d\u3093\u3068\u66ae\u3089\u3057\u305f\u30891\u301c8\u5dfb",
+            "raw_description": {
+                "text": "\u500b\u4eba\u7684\u306a\u65e5\u8a18\u5e33(\u305f\u307e\u306b\u7d75\u65e5\u8a18)\u250a\u7d75\u3084\u307e\u3093\u304c\u3092\u63cf\u304f\u4ed5\u4e8b\u3068\u3001web\u30b5\u30a4\u30c8\u3092\u3064\u304f\u308b\u4ed5\u4e8b\u3092\u3057\u3066\u3044\u307e\u3059\u250a\u308d\u3093\u3055\u3093\u305f\u3061\u306e\u672c\u2192\u9ed2\u732b\u308d\u3093\u3068\u66ae\u3089\u3057\u305f\u30891\u301c8\u5dfb",
+                "facets": []
+            },
+            "location": "\u304a\u77e5\u3089\u305b\u3084\u307e\u3068\u3081\u306f\u30cf\u30a4\u30e9\u30a4\u30c8\u306b\u5165\u308c\u3066\u3044\u307e\u3059",
+            "banner_url": "https://pbs.twimg.com/profile_banners/258999740/1574175202",
+            "avatar_url": "https://pbs.twimg.com/profile_images/761357866775158784/WtRrCtzL_200x200.jpg",
+            "joined": "Mon Feb 28 23:28:45 +0000 2011",
+            "protected": false,
+            "website": {
+                "url": "https://line.me/S/shop/sticker/author/1239137",
+                "display_url": "line.me/S/shop/sticker\u2026"
+            },
+            "verification": {
+                "verified": true,
+                "verified_at": null,
+                "type": "individual"
+            },
+            "type": "profile"
+        },
+        "replies": 33,
+        "reposts": 1465,
+        "likes": 16829,
+        "bookmarks": 356,
+        "quotes": 15,
+        "embed_card": "player",
+        "created_at": "Fri Dec 20 09:50:29 +0000 2024",
+        "created_timestamp": 1734688229,
+        "possibly_sensitive": false,
+        "views": 434911,
+        "is_note_tweet": false,
+        "community_note": null,
+        "lang": "ja",
+        "replying_to": null,
+        "media": {
+            "all": [
+                {
+                    "id": "1870044020577349632",
+                    "url": "https://video.twimg.com/amplify_video/1870044020577349632/vid/avc1/960x720/_zo_go08COwEnhJD.mp4?tag=16",
+                    "thumbnail_url": "https://pbs.twimg.com/amplify_video_thumb/1870044020577349632/img/NGOjQODxelGLjhDd.jpg",
+                    "duration": 30.8,
+                    "width": 960,
+                    "height": 720,
+                    "format": "video/mp4",
+                    "type": "video",
+                    "formats": [
+                        {
+                            "url": "https://video.twimg.com/amplify_video/1870044020577349632/pl/j4gthMW1wQxGbIi4.m3u8?tag=16&v=cfc",
+                            "container": "m3u8"
+                        },
+                        {
+                            "url": "https://video.twimg.com/amplify_video/1870044020577349632/vid/avc1/360x270/-KOjnkmbrnLsSX-S.mp4?tag=16",
+                            "bitrate": 288000,
+                            "container": "mp4",
+                            "codec": "h264"
+                        },
+                        {
+                            "url": "https://video.twimg.com/amplify_video/1870044020577349632/vid/avc1/480x360/8gbTjRD9bbdoz9Iv.mp4?tag=16",
+                            "bitrate": 832000,
+                            "container": "mp4",
+                            "codec": "h264"
+                        },
+                        {
+                            "url": "https://video.twimg.com/amplify_video/1870044020577349632/vid/avc1/960x720/_zo_go08COwEnhJD.mp4?tag=16",
+                            "bitrate": 2176000,
+                            "container": "mp4",
+                            "codec": "h264"
+                        }
+                    ],
+                    "publisher": null
+                }
+            ],
+            "videos": [
+                {
+                    "id": "1870044020577349632",
+                    "url": "https://video.twimg.com/amplify_video/1870044020577349632/vid/avc1/960x720/_zo_go08COwEnhJD.mp4?tag=16",
+                    "thumbnail_url": "https://pbs.twimg.com/amplify_video_thumb/1870044020577349632/img/NGOjQODxelGLjhDd.jpg",
+                    "duration": 30.8,
+                    "width": 960,
+                    "height": 720,
+                    "format": "video/mp4",
+                    "type": "video",
+                    "formats": [
+                        {
+                            "url": "https://video.twimg.com/amplify_video/1870044020577349632/pl/j4gthMW1wQxGbIi4.m3u8?tag=16&v=cfc",
+                            "container": "m3u8"
+                        },
+                        {
+                            "url": "https://video.twimg.com/amplify_video/1870044020577349632/vid/avc1/360x270/-KOjnkmbrnLsSX-S.mp4?tag=16",
+                            "bitrate": 288000,
+                            "container": "mp4",
+                            "codec": "h264"
+                        },
+                        {
+                            "url": "https://video.twimg.com/amplify_video/1870044020577349632/vid/avc1/480x360/8gbTjRD9bbdoz9Iv.mp4?tag=16",
+                            "bitrate": 832000,
+                            "container": "mp4",
+                            "codec": "h264"
+                        },
+                        {
+                            "url": "https://video.twimg.com/amplify_video/1870044020577349632/vid/avc1/960x720/_zo_go08COwEnhJD.mp4?tag=16",
+                            "bitrate": 2176000,
+                            "container": "mp4",
+                            "codec": "h264"
+                        }
+                    ],
+                    "publisher": null
+                }
+            ]
+        },
+        "source": "Twitter for iPhone",
+        "provider": "twitter",
+        "reposted_by": null
+    },
+    "thread": null,
+    "author": {
+        "screen_name": "bou128",
+        "url": "https://x.com/bou128",
+        "id": "258999740",
+        "followers": 318033,
+        "following": 73,
+        "likes": 2966,
+        "media_count": 5218,
+        "statuses": 14041,
+        "name": "AKR\ud83c\udf31\u2467\u5dfb\u767a\u58f2\u4e2d",
+        "description": "\u500b\u4eba\u7684\u306a\u65e5\u8a18\u5e33(\u305f\u307e\u306b\u7d75\u65e5\u8a18)\u250a\u7d75\u3084\u307e\u3093\u304c\u3092\u63cf\u304f\u4ed5\u4e8b\u3068\u3001web\u30b5\u30a4\u30c8\u3092\u3064\u304f\u308b\u4ed5\u4e8b\u3092\u3057\u3066\u3044\u307e\u3059\u250a\u308d\u3093\u3055\u3093\u305f\u3061\u306e\u672c\u2192\u9ed2\u732b\u308d\u3093\u3068\u66ae\u3089\u3057\u305f\u30891\u301c8\u5dfb",
+        "raw_description": {
+            "text": "\u500b\u4eba\u7684\u306a\u65e5\u8a18\u5e33(\u305f\u307e\u306b\u7d75\u65e5\u8a18)\u250a\u7d75\u3084\u307e\u3093\u304c\u3092\u63cf\u304f\u4ed5\u4e8b\u3068\u3001web\u30b5\u30a4\u30c8\u3092\u3064\u304f\u308b\u4ed5\u4e8b\u3092\u3057\u3066\u3044\u307e\u3059\u250a\u308d\u3093\u3055\u3093\u305f\u3061\u306e\u672c\u2192\u9ed2\u732b\u308d\u3093\u3068\u66ae\u3089\u3057\u305f\u30891\u301c8\u5dfb",
+            "facets": []
+        },
+        "location": "\u304a\u77e5\u3089\u305b\u3084\u307e\u3068\u3081\u306f\u30cf\u30a4\u30e9\u30a4\u30c8\u306b\u5165\u308c\u3066\u3044\u307e\u3059",
+        "banner_url": "https://pbs.twimg.com/profile_banners/258999740/1574175202",
+        "avatar_url": "https://pbs.twimg.com/profile_images/761357866775158784/WtRrCtzL_200x200.jpg",
+        "joined": "Mon Feb 28 23:28:45 +0000 2011",
+        "protected": false,
+        "website": {
+            "url": "https://line.me/S/shop/sticker/author/1239137",
+            "display_url": "line.me/S/shop/sticker\u2026"
+        },
+        "verification": {
+            "verified": true,
+            "verified_at": null,
+            "type": "individual"
+        },
+        "type": "profile"
+    },
+    "code": 200
+}

@@ -1,0 +1,145 @@
+{
+    "status": {
+        "type": "status",
+        "url": "https://x.com/elonmusk/status/1349129669258448897",
+        "id": "1349129669258448897",
+        "text": "Hey you \u2026\nYeah you Queen \u2026\nYou\u2019re gonna make it! \ud83d\udc95\ud83d\udc95",
+        "raw_text": {
+            "text": "Hey you \u2026\nYeah you Queen \u2026\nYou\u2019re gonna make it! \ud83d\udc95\ud83d\udc95 https://t.co/LrqdIrbIyd",
+            "display_text_range": [
+                0,
+                51
+            ],
+            "facets": [
+                {
+                    "type": "media",
+                    "indices": [
+                        52,
+                        75
+                    ],
+                    "id": "1349129665299013635",
+                    "display": "pic.x.com/LrqdIrbIyd",
+                    "original": "https://t.co/LrqdIrbIyd",
+                    "replacement": "https://x.com/elonmusk/status/1349129669258448897/photo/1"
+                }
+            ]
+        },
+        "author": {
+            "screen_name": "elonmusk",
+            "url": "https://x.com/elonmusk",
+            "id": "44196397",
+            "followers": 241204294,
+            "following": 1383,
+            "likes": 243021,
+            "media_count": 4694,
+            "statuses": 106822,
+            "name": "Elon Musk",
+            "description": "http://Terafab.AI",
+            "raw_description": {
+                "text": "https://t.co/ZdBx5WABYx",
+                "facets": [
+                    {
+                        "type": "url",
+                        "indices": [
+                            0,
+                            23
+                        ],
+                        "original": "https://t.co/ZdBx5WABYx",
+                        "replacement": "http://Terafab.AI",
+                        "display": "Terafab.AI"
+                    }
+                ]
+            },
+            "location": "",
+            "banner_url": "https://pbs.twimg.com/profile_banners/44196397/1774145451",
+            "avatar_url": "https://pbs.twimg.com/profile_images/2053244804520427520/m8mdWZCG_200x200.jpg",
+            "joined": "Tue Jun 02 20:12:29 +0000 2009",
+            "protected": false,
+            "website": null,
+            "verification": {
+                "verified": true,
+                "verified_at": null,
+                "type": "individual"
+            },
+            "type": "profile"
+        },
+        "replies": 12636,
+        "reposts": 94400,
+        "likes": 509421,
+        "bookmarks": 6438,
+        "quotes": 13468,
+        "embed_card": "summary_large_image",
+        "created_at": "Tue Jan 12 23:02:33 +0000 2021",
+        "created_timestamp": 1610492553,
+        "possibly_sensitive": false,
+        "views": null,
+        "is_note_tweet": false,
+        "community_note": null,
+        "lang": "en",
+        "replying_to": null,
+        "media": {
+            "all": [
+                {
+                    "type": "photo",
+                    "id": "1349129665299013635",
+                    "url": "https://pbs.twimg.com/media/ErkSSFgW4AMKude.jpg?name=orig",
+                    "width": 960,
+                    "height": 900
+                }
+            ],
+            "photos": [
+                {
+                    "type": "photo",
+                    "id": "1349129665299013635",
+                    "url": "https://pbs.twimg.com/media/ErkSSFgW4AMKude.jpg?name=orig",
+                    "width": 960,
+                    "height": 900
+                }
+            ]
+        },
+        "source": "Twitter for iPhone",
+        "provider": "twitter",
+        "reposted_by": null
+    },
+    "thread": null,
+    "author": {
+        "screen_name": "elonmusk",
+        "url": "https://x.com/elonmusk",
+        "id": "44196397",
+        "followers": 241204294,
+        "following": 1383,
+        "likes": 243021,
+        "media_count": 4694,
+        "statuses": 106822,
+        "name": "Elon Musk",
+        "description": "http://Terafab.AI",
+        "raw_description": {
+            "text": "https://t.co/ZdBx5WABYx",
+            "facets": [
+                {
+                    "type": "url",
+                    "indices": [
+                        0,
+                        23
+                    ],
+                    "original": "https://t.co/ZdBx5WABYx",
+                    "replacement": "http://Terafab.AI",
+                    "display": "Terafab.AI"
+                }
+            ]
+        },
+        "location": "",
+        "banner_url": "https://pbs.twimg.com/profile_banners/44196397/1774145451",
+        "avatar_url": "https://pbs.twimg.com/profile_images/2053244804520427520/m8mdWZCG_200x200.jpg",
+        "joined": "Tue Jun 02 20:12:29 +0000 2009",
+        "protected": false,
+        "website": null,
+        "verification": {
+            "verified": true,
+            "verified_at": null,
+            "type": "individual"
+        },
+        "type": "profile"
+    },
+    "code": 200
+}
