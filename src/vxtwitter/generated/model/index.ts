@@ -7,11 +7,11 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export * from './article.zod';
-export * from './getPostInformationParams.zod';
-export * from './mediaExtended.zod';
-export * from './mediaSize.zod';
-export * from './pollData.zod';
-export * from './pollOption.zod';
-export * from './translation.zod';
-export * from './vxTwitterStatus.zod';
+export * from './article.zod.js';
+export * from './getPostInformationParams.zod.js';
+export * from './mediaExtended.zod.js';
+export * from './mediaSize.zod.js';
+export * from './pollData.zod.js';
+export * from './pollOption.zod.js';
+export * from './translation.zod.js';
+export * from './vxTwitterStatus.zod.js';

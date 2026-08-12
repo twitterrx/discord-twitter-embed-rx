@@ -2,7 +2,7 @@ import { serve } from "@hono/node-server";
 import type { ServerType } from "@hono/node-server";
 import { Hono } from "hono";
 
-import logger from "@/utils/logger";
+import logger from "#/utils/logger.js";
 
 /**
  * ヘルスチェックで確認する依存コンポーネントの状態取得関数群

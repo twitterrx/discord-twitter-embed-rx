@@ -1,9 +1,9 @@
-import { HttpResponseError, ResponseContentTypeError } from "@/infrastructure/http/orvalFetch";
-import logger from "@/utils/logger";
+import { HttpResponseError, ResponseContentTypeError } from "#/infrastructure/http/orvalFetch.js";
+import logger from "#/utils/logger.js";
 
-import { getPostInformation } from "./generated/default";
-import { VxTwitterStatus } from "./generated/model";
-import type { VxTwitter } from "./vxtwitter";
+import { getPostInformation } from "./generated/default.js";
+import { VxTwitterStatus } from "./generated/model/index.js";
+import type { VxTwitter } from "./vxtwitter.js";
 
 export class VxTwitterServerError extends Error {
   constructor(

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { FxTwitterAdapter } from "@/adapters/twitter/FxTwitterAdapter";
-import { SocialThread } from "@/fxtwitter/generated/model";
+import { FxTwitterAdapter } from "#/adapters/twitter/FxTwitterAdapter.js";
+import { SocialThread } from "#/fxtwitter/generated/model/index.js";
 
-import { TEST_URLS } from "../fixtures/test-urls";
+import { TEST_URLS } from "../fixtures/test-urls.js";
 
 /**
  * FxTwitter の実 API とスキーマの契約テスト。

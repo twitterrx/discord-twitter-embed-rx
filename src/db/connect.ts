@@ -1,6 +1,6 @@
-import logger from "@/utils/logger";
+import logger from "#/utils/logger.js";
 
-import { redis } from "./init";
+import { redis } from "./init.js";
 
 export async function connectRedis() {
   try {

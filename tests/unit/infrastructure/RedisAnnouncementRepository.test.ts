@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ANNOUNCEMENT_DLQ_STREAM_KEY } from "@rx-twitter/shared";
 
-vi.mock("@/db/init", () => ({
+vi.mock("#/db/init.js", () => ({
   redis: {
     sAdd: vi.fn(),
     sIsMember: vi.fn(),
@@ -13,12 +13,12 @@ vi.mock("@/db/init", () => ({
   },
 }));
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { redis } from "@/db/init";
-import { RedisAnnouncementRepository } from "@/infrastructure/db/RedisAnnouncementRepository";
+import { redis } from "#/db/init.js";
+import { RedisAnnouncementRepository } from "#/infrastructure/db/RedisAnnouncementRepository.js";
 
 describe("RedisAnnouncementRepository", () => {
   let repo: RedisAnnouncementRepository;

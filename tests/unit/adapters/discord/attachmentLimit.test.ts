@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GuildPremiumTier } from "discord.js";
 
-import { resolveAttachmentLimit } from "@/adapters/discord/attachmentLimit";
+import { resolveAttachmentLimit } from "#/adapters/discord/attachmentLimit.js";
 
 const MiB = 1024 * 1024;
 

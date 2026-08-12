@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { SocialThread } from "@/fxtwitter/generated/model";
-import { describeSocialThreadFailure } from "@/fxtwitter/statusValidationError";
+import { SocialThread } from "#/fxtwitter/generated/model/index.js";
+import { describeSocialThreadFailure } from "#/fxtwitter/statusValidationError.js";
 
 /**
  * 検証失敗の診断。union 6 ブランチ分の issue に埋もれず、原因フィールドが分かることを担保する。

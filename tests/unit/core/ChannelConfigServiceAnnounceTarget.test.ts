@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { GuildConfig, IChannelConfigRepository } from "@rx-twitter/shared";
 
-import type { FallbackPolicies } from "@/core/services/ChannelConfigService";
-import { ChannelConfigService } from "@/core/services/ChannelConfigService";
+import type { FallbackPolicies } from "#/core/services/ChannelConfigService.js";
+import { ChannelConfigService } from "#/core/services/ChannelConfigService.js";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

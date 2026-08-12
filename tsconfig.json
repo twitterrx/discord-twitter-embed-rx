@@ -1,27 +1,26 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ES2022",
+    "module": "NodeNext",
     "lib": ["ES2022"],
-    // 【暫定】バンドラは使っていない。この設定は負債であり、#614 で返済する。
+    // Node ESM のセマンティクスに揃える（#614）。型検査と実行時で解決規則が一致する。
     //
-    // ソースは拡張子なしの相対 import・ディレクトリ import（"./generated/model"）・
-    // "@/" エイリアスを使っており、いずれも Node ESM が解決できない形である。
-    // 橋渡しは tsc-alias --resolve-full-paths が担い、dist で拡張子と index を補う。
+    // エイリアスは package.json の imports フィールドで宣言し、Node がランタイムで
+    // 解決する。tsc は指定子を書き換えないため、後処理（tsc-alias）は不要。
     //
-    //   src:  from "./generated/model"  →  dist: from "./generated/model/index.js"
-    //   src:  from "@/utils/logger"     →  dist: from "../../utils/logger.js"
+    //   tsconfig.json  paths   "#/*" → "./src/*"    コンパイル時（tsc が見る）
+    //   package.json   imports "#/*" → "./dist/*"   実行時（Node が見る）
     //
-    // 問題は、型検査が実行時の真実を語らないこと。TS は bundler 規則で、Node は
-    // ESM 規則で解決する。この不一致は原理的に消せず、ビルドの正当性がサードパーティの
-    // 後処理（tsc-alias）に依存している。外れれば本番で ERR_MODULE_NOT_FOUND になる。
+    // 宣言が 2 つに分かれているため、片方だけ書き換えると型検査は通って実行時に
+    // 落ちる。そこは npm run verify:dist（scripts/check-dist-resolution.mjs）で
+    // 検査している。
     //
-    // 返済までの安全弁として、ビルド成果物の解決を
-    // scripts/check-dist-resolution.mjs で検証している（npm run verify:dist）。
-    // これは検知器であって返済ではない。
-    "moduleResolution": "bundler",
+    // 相対 import には .js を明示する（指す先は .ts だが、ESM の仕様どおり
+    // 出力後のファイル名で書く）。ディレクトリ import は使えないため
+    // ./foo/index.js のように書く。
+    "moduleResolution": "NodeNext",
     "paths": {
-      "@/*": ["./src/*"]
+      "#/*": ["./src/*"]
     },
     "rootDir": "./src",
     "outDir": "./dist",

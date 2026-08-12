@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/db/init", () => ({
+vi.mock("#/db/init.js", () => ({
   redis: {
     get: vi.fn(),
     set: vi.fn(),
   },
 }));
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { redis } from "@/db/init";
-import { RedisArticlePostRepository } from "@/infrastructure/db/RedisArticlePostRepository";
-import logger from "@/utils/logger";
+import { redis } from "#/db/init.js";
+import { RedisArticlePostRepository } from "#/infrastructure/db/RedisArticlePostRepository.js";
+import logger from "#/utils/logger.js";
 
 describe("RedisArticlePostRepository", () => {
   const articleId = "2079240895006904322";

@@ -7,8 +7,8 @@
 
 import type { Client } from "discord.js";
 
-import type { AppRedisClient } from "@/db/init";
-import logger from "@/utils/logger";
+import type { AppRedisClient } from "#/db/init.js";
+import logger from "#/utils/logger.js";
 
 const ENABLE_ORPHAN_CLEANUP = process.env.ENABLE_ORPHAN_CLEANUP === "true";
 

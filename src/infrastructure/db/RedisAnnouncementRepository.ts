@@ -1,8 +1,8 @@
 import { ANNOUNCEMENT_DLQ_STREAM_KEY } from "@rx-twitter/shared";
 
-import type { DeadLetterRecord, IAnnouncementRepository } from "@/core/models/Announcement";
-import { redis } from "@/db/init";
-import logger from "@/utils/logger";
+import type { DeadLetterRecord, IAnnouncementRepository } from "#/core/models/Announcement.js";
+import { redis } from "#/db/init.js";
+import logger from "#/utils/logger.js";
 
 /** 配信済み記録の TTL（秒）: 30日。古いお知らせの記録を自動失効させる */
 const DELIVERED_TTL_SECONDS = 30 * 24 * 60 * 60;

@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { resolveFallbackPolicies } from "@/config/fallbackPolicy";
-import logger from "@/utils/logger";
+import { resolveFallbackPolicies } from "#/config/fallbackPolicy.js";
+import logger from "#/utils/logger.js";
 
 describe("resolveFallbackPolicies", () => {
   beforeEach(() => {

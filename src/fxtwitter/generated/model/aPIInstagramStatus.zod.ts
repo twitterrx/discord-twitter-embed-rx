@@ -6,10 +6,10 @@
  * OpenAPI spec version: 2.0.0
  */
 import { z as zod } from 'zod';
-import { APIReplyingTo } from './aPIReplyingTo.zod';
-import { APIRepostedBy } from './aPIRepostedBy.zod';
-import { APIStatusTombstone } from './aPIStatusTombstone.zod';
-import { APIUser } from './aPIUser.zod';
+import { APIReplyingTo } from './aPIReplyingTo.zod.js';
+import { APIRepostedBy } from './aPIRepostedBy.zod.js';
+import { APIStatusTombstone } from './aPIStatusTombstone.zod.js';
+import { APIUser } from './aPIUser.zod.js';
 
 export const aPIInstagramStatusRawTextFacetsItemIndicesMin = 2;
 export const aPIInstagramStatusRawTextFacetsItemIndicesMax = 2;

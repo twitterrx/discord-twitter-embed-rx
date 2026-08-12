@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { IFileManager } from "@/adapters/discord/MessageHandler";
-import logger from "@/utils/logger";
+import { IFileManager } from "#/adapters/discord/MessageHandler.js";
+import logger from "#/utils/logger.js";
 
 /**
  * ファイルシステム操作を担当

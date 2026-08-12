@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ReplyInfo } from "@/db/replyLogger";
+import type { ReplyInfo } from "#/db/replyLogger.js";
 
-vi.mock("@/db/init", () => ({
+vi.mock("#/db/init.js", () => ({
   redis: {
     set: vi.fn(),
     get: vi.fn(),
@@ -10,13 +10,13 @@ vi.mock("@/db/init", () => ({
   },
 }));
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
 // モック後にインポート
-import { redis } from "@/db/init";
-import { RedisReplyLogger } from "@/infrastructure/db/RedisReplyLogger";
+import { redis } from "#/db/init.js";
+import { RedisReplyLogger } from "#/infrastructure/db/RedisReplyLogger.js";
 
 describe("RedisReplyLogger", () => {
   let logger: RedisReplyLogger;

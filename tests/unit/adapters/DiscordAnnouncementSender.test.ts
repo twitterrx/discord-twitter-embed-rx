@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Announcement } from "@rx-twitter/shared";
 
-import { DiscordAnnouncementSender } from "@/adapters/discord/DiscordAnnouncementSender";
+import { DiscordAnnouncementSender } from "#/adapters/discord/DiscordAnnouncementSender.js";
 
 const makeAnnouncement = (overrides: Partial<Announcement> = {}): Announcement => ({
   id: "ann-1",

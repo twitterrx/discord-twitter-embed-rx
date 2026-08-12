@@ -1,5 +1,5 @@
-import { Tweet, TweetAuthor, TweetMetrics, TweetMedia } from "@/core/models/Tweet";
-import { mediaUrl } from "./testMediaUrl";
+import { Tweet, TweetAuthor, TweetMetrics, TweetMedia } from "#/core/models/Tweet.js";
+import { mediaUrl } from "./testMediaUrl.js";
 
 export const createMockTweetAuthor = (overrides?: Partial<TweetAuthor>): TweetAuthor => ({
   id: "test_user",

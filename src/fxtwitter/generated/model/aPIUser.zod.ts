@@ -6,7 +6,7 @@
  * OpenAPI spec version: 2.0.0
  */
 import { z as zod } from 'zod';
-import { APIAboutAccount } from './aPIAboutAccount.zod';
+import { APIAboutAccount } from './aPIAboutAccount.zod.js';
 
 export const aPIUserRawDescriptionFacetsItemIndicesMin = 2;
 export const aPIUserRawDescriptionFacetsItemIndicesMax = 2;

@@ -9,9 +9,9 @@
 import type {
   GetPostInformationParams,
   VxTwitterStatus
-} from './model';
+} from './model/index.js';
 
-import { orvalFetch } from '../../infrastructure/http/orvalFetch';
+import { orvalFetch } from '../../infrastructure/http/orvalFetch.js';
 
 
 export const getGetPostInformationUrl = (screenName: string,

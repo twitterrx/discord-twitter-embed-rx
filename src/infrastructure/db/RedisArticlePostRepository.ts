@@ -1,6 +1,6 @@
-import type { IArticlePostRepository } from "@/core/services/ArticlePostService";
-import { redis } from "@/db/init";
-import logger from "@/utils/logger";
+import type { IArticlePostRepository } from "#/core/services/ArticlePostService.js";
+import { redis } from "#/db/init.js";
+import logger from "#/utils/logger.js";
 
 /**
  * 記事IDと共有元ポストURLの対応関係をRedisへ保存する

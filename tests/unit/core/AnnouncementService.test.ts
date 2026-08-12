@@ -6,10 +6,10 @@ import type {
   GuildDeliveryTarget,
   IAnnouncementRepository,
   IAnnouncementSender,
-} from "@/core/models/Announcement";
-import { AnnouncementService } from "@/core/services/AnnouncementService";
+} from "#/core/models/Announcement.js";
+import { AnnouncementService } from "#/core/services/AnnouncementService.js";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

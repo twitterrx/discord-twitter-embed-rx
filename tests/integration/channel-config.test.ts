@@ -2,13 +2,13 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import type { GuildConfig } from "@rx-twitter/shared";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { ChannelConfigService, type FallbackPolicies } from "@/core/services/ChannelConfigService";
-import { redis } from "@/db/init";
-import { RedisChannelConfigRepository } from "@/infrastructure/db/RedisChannelConfigRepository";
+import { ChannelConfigService, type FallbackPolicies } from "#/core/services/ChannelConfigService.js";
+import { redis } from "#/db/init.js";
+import { RedisChannelConfigRepository } from "#/infrastructure/db/RedisChannelConfigRepository.js";
 
 /**
  * 実 Redis を用いたチャンネル設定の統合テスト。

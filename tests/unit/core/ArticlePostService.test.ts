@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ArticlePostService,
   type IArticlePostRepository,
-} from "@/core/services/ArticlePostService";
+} from "#/core/services/ArticlePostService.js";
 
 describe("ArticlePostService", () => {
   let repository: IArticlePostRepository;

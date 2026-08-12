@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { SocialThread } from "@/fxtwitter/generated/model";
+import { SocialThread } from "#/fxtwitter/generated/model/index.js";
 
 /**
  * api.fxtwitter.com から実際に取得したレスポンスを検証する。

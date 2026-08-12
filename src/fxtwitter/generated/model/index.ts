@@ -6,16 +6,16 @@
  * OpenAPI spec version: 2.0.0
  */
 
-export * from './aPIAboutAccount.zod';
-export * from './aPIBlueskyStatus.zod';
-export * from './aPIInstagramStatus.zod';
-export * from './aPIMastodonStatus.zod';
-export * from './aPIReplyingTo.zod';
-export * from './aPIRepostedBy.zod';
-export * from './aPIStatusTombstone.zod';
-export * from './aPIThreadsStatus.zod';
-export * from './aPITwitterStatus.zod';
-export * from './aPIUser.zod';
-export * from './apiQueryError.zod';
-export * from './get2StatusIdParams.zod';
-export * from './socialThread.zod';
+export * from './aPIAboutAccount.zod.js';
+export * from './aPIBlueskyStatus.zod.js';
+export * from './aPIInstagramStatus.zod.js';
+export * from './aPIMastodonStatus.zod.js';
+export * from './aPIReplyingTo.zod.js';
+export * from './aPIRepostedBy.zod.js';
+export * from './aPIStatusTombstone.zod.js';
+export * from './aPIThreadsStatus.zod.js';
+export * from './aPITwitterStatus.zod.js';
+export * from './aPIUser.zod.js';
+export * from './apiQueryError.zod.js';
+export * from './get2StatusIdParams.zod.js';
+export * from './socialThread.zod.js';

@@ -4,30 +4,30 @@ import type { GuildConfig } from "@rx-twitter/shared";
 import { ContainerBuilder } from "discord.js";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { ComponentsV2Builder } from "@/adapters/discord/ComponentsV2Builder";
-import { DiscordEmbedBuilder } from "@/adapters/discord/EmbedBuilder";
-import { MessageHandler } from "@/adapters/discord/MessageHandler";
-import { TwitterAdapter } from "@/adapters/twitter/TwitterAdapter";
-import { ArticlePostService } from "@/core/services/ArticlePostService";
-import { BanService } from "@/core/services/BanService";
-import { ChannelConfigService, type FallbackPolicies } from "@/core/services/ChannelConfigService";
-import { MediaHandler } from "@/core/services/MediaHandler";
-import { TweetProcessor } from "@/core/services/TweetProcessor";
-import { redis } from "@/db/init";
-import { RedisArticlePostRepository } from "@/infrastructure/db/RedisArticlePostRepository";
-import { RedisBanRepository } from "@/infrastructure/db/RedisBanRepository";
-import { RedisChannelConfigRepository } from "@/infrastructure/db/RedisChannelConfigRepository";
-import { RedisReplyLogger } from "@/infrastructure/db/RedisReplyLogger";
-import { FileManager } from "@/infrastructure/filesystem/FileManager";
-import { HttpClient } from "@/infrastructure/http/HttpClient";
-import { VideoDownloader } from "@/infrastructure/http/VideoDownloader";
+import { ComponentsV2Builder } from "#/adapters/discord/ComponentsV2Builder.js";
+import { DiscordEmbedBuilder } from "#/adapters/discord/EmbedBuilder.js";
+import { MessageHandler } from "#/adapters/discord/MessageHandler.js";
+import { TwitterAdapter } from "#/adapters/twitter/TwitterAdapter.js";
+import { ArticlePostService } from "#/core/services/ArticlePostService.js";
+import { BanService } from "#/core/services/BanService.js";
+import { ChannelConfigService, type FallbackPolicies } from "#/core/services/ChannelConfigService.js";
+import { MediaHandler } from "#/core/services/MediaHandler.js";
+import { TweetProcessor } from "#/core/services/TweetProcessor.js";
+import { redis } from "#/db/init.js";
+import { RedisArticlePostRepository } from "#/infrastructure/db/RedisArticlePostRepository.js";
+import { RedisBanRepository } from "#/infrastructure/db/RedisBanRepository.js";
+import { RedisChannelConfigRepository } from "#/infrastructure/db/RedisChannelConfigRepository.js";
+import { RedisReplyLogger } from "#/infrastructure/db/RedisReplyLogger.js";
+import { FileManager } from "#/infrastructure/filesystem/FileManager.js";
+import { HttpClient } from "#/infrastructure/http/HttpClient.js";
+import { VideoDownloader } from "#/infrastructure/http/VideoDownloader.js";
 
-import { createFakeClient, createFakeMessage } from "./discordFake";
-import { stubTwitterApi, vxStatus } from "./twitterApiStub";
+import { createFakeClient, createFakeMessage } from "./discordFake.js";
+import { stubTwitterApi, vxStatus } from "./twitterApiStub.js";
 
 /**
  * Bot の主要フローを通す E2E テスト。

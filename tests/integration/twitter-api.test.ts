@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { TEST_URLS } from "../fixtures/test-urls";
-import { TwitterAdapter } from "@/adapters/twitter/TwitterAdapter";
+import { TEST_URLS } from "../fixtures/test-urls.js";
+import { TwitterAdapter } from "#/adapters/twitter/TwitterAdapter.js";
 
 /**
  * vxTwitter / FxTwitter の実 API に対する統合テスト。

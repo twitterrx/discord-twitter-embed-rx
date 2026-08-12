@@ -1,6 +1,6 @@
-import { redis } from "@/db/init";
-import { IReplyLogger, ReplyInfo } from "@/db/replyLogger";
-import logger from "@/utils/logger";
+import { redis } from "#/db/init.js";
+import { IReplyLogger, ReplyInfo } from "#/db/replyLogger.js";
+import logger from "#/utils/logger.js";
 
 /**
  * Redisを使用したReplyLogger実装

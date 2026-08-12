@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createMockTweet } from "../../../fixtures/mock-tweets";
-import { ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
-import { TwitterAdapter } from "@/adapters/twitter/TwitterAdapter";
+import { createMockTweet } from "../../../fixtures/mock-tweets.js";
+import { ITwitterAdapter } from "#/adapters/twitter/BaseTwitterAdapter.js";
+import { TwitterAdapter } from "#/adapters/twitter/TwitterAdapter.js";
 
 describe("TwitterAdapter", () => {
   let primaryAdapter: ITwitterAdapter;
