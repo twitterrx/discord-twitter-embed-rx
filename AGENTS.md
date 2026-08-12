@@ -89,7 +89,7 @@ const adapter = TwitterAdapter.createDefault(); // ← 内部で Vx/Fx を compo
 | ゲート      | コマンド                              | 内容                                                                                          |
 | ----------- | ------------------------------------- | --------------------------------------------------------------------------------------------- |
 | **Lint**    | `npm run lint` (oxlint)               | `src/` および `tests/` 以下の全 TypeScript を oxlint でチェック。警告・エラーともにゼロ必須。 |
-| **Compile** | `npm run compile:test` (tsc --noEmit) | TypeScript コンパイルエラーゼロ。パスエイリアス `@/` の解決も含む。                           |
+| **Compile** | `npm run compile:test` (tsc --noEmit) | TypeScript コンパイルエラーゼロ。パスエイリアス `#/` の解決も含む。                           |
 | **Build**   | `npm run build`                       | 本番ビルドが正常に完了すること（clean → shared ビルド → tsc → tsc-alias）。                   |
 
 実装・変更を行ったら、作業完了前に必ず `npm run lint` (`oxlint src/ tests/`) と `npm run compile:test` (`tsc --noEmit`) を実行し、通過を確認する。
@@ -155,7 +155,16 @@ scope は省略可能。description は日本語でも英語でもよいが、�
 - 命名: `camelCase`（変数/関数）、`PascalCase`（クラス/型/インターフェース）、`UPPER_CASE`（enum 値/定数）。
 - 型定義は `interface` 優先。`type` は Union 型など interface で表現できない場合のみ。
 - ファイル名: `PascalCase.ts`（クラス/コンポーネント）、`camelCase.ts`（関数/ユーティリティ）。
-- パスエイリアス: `@/` → `./src/`（tsconfig paths + vitest alias で解決）。
+- モジュール解決: `NodeNext`。相対 import には **`.js` を明示**する（指す先は `.ts` だが、ESM の仕様どおり出力後のファイル名で書く）。ディレクトリ import は使えないため `./foo/index.js` と書く。
+- パスエイリアス: `#/` → `./src/`。Node の subpath imports（`package.json` の `imports`）で実行時に解決するため、ビルド後処理は不要。宣言は 2 箇所に分かれている点に注意。
+
+  | 宣言 | 対象 | 用途 |
+  | --- | --- | --- |
+  | `tsconfig.json` の `paths` | `#/*` → `./src/*` | コンパイル時（tsc） |
+  | `package.json` の `imports` | `#/*` → `./dist/*` | 実行時（Node） |
+  | `vitest.config.ts` の `alias` | `#` → `./src` | テスト時（Vite） |
+
+  片方だけ書き換えると型検査は通って実行時に落ちる。`npm run verify:dist` がビルド成果物側で検査する。
 
 ### 非同期処理
 
@@ -186,7 +195,7 @@ scope は省略可能。description は日本語でも英語でもよいが、�
   docker rm -f twrx-test-redis
   ```
 
-  被験体（Repository 等）と同じ Redis 接続（`@/db/init` の `redis`）でテストデータを書くこと。別クライアントを立てて書き込むと「書いたのに読めない」状態を作り込み、結合を検証できない。
+  被験体（Repository 等）と同じ Redis 接続（`#/db/init` の `redis`）でテストデータを書くこと。別クライアントを立てて書き込むと「書いたのに読めない」状態を作り込み、結合を検証できない。
 
 - **未実行を成功扱いにしない**: 依存が無いときに `if (!available) return;` で早期 return すると、テストが緑のまま何も検証しない。依存の有無は `skipIf` で表明し、実行されなかったことがレポートに `skipped` として残るようにする。
 
