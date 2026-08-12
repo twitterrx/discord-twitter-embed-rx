@@ -6,7 +6,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    exclude: ["node_modules", "dist", "dashboard/**"],
+    exclude: ["node_modules", "dist"],
     globalSetup: "./tests/globalSetup.ts",
     env: {
       NODE_ENV: "test",

@@ -206,3 +206,9 @@ jobs:
             exit 1
           fi
           echo "Build successful"
+
+      # moduleResolution: "bundler" のソースを Node ESM で動く形にしているのは
+      # tsc-alias --resolve-full-paths だけ。これが外れても型検査は通ってしまい、
+      # 本番起動で初めて ERR_MODULE_NOT_FOUND になる。成果物側で解決を検証する。
+      - name: Verify module resolution in build output
+        run: npm run verify:dist

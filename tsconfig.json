@@ -3,6 +3,22 @@
     "target": "ES2022",
     "module": "ES2022",
     "lib": ["ES2022"],
+    // 【暫定】バンドラは使っていない。この設定は負債であり、#614 で返済する。
+    //
+    // ソースは拡張子なしの相対 import・ディレクトリ import（"./generated/model"）・
+    // "@/" エイリアスを使っており、いずれも Node ESM が解決できない形である。
+    // 橋渡しは tsc-alias --resolve-full-paths が担い、dist で拡張子と index を補う。
+    //
+    //   src:  from "./generated/model"  →  dist: from "./generated/model/index.js"
+    //   src:  from "@/utils/logger"     →  dist: from "../../utils/logger.js"
+    //
+    // 問題は、型検査が実行時の真実を語らないこと。TS は bundler 規則で、Node は
+    // ESM 規則で解決する。この不一致は原理的に消せず、ビルドの正当性がサードパーティの
+    // 後処理（tsc-alias）に依存している。外れれば本番で ERR_MODULE_NOT_FOUND になる。
+    //
+    // 返済までの安全弁として、ビルド成果物の解決を
+    // scripts/check-dist-resolution.mjs で検証している（npm run verify:dist）。
+    // これは検知器であって返済ではない。
     "moduleResolution": "bundler",
     "paths": {
       "@/*": ["./src/*"]
@@ -16,10 +32,9 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
-    "declaration": true
+    "allowSyntheticDefaultImports": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests", "dashboard", "packages"],
+  "exclude": ["node_modules", "dist", "tests", "packages"],
   "compileOnSave": false
 }
