@@ -50,6 +50,7 @@ src/
 tests/
 ├── unit/               # 単体テスト（モック使用）
 ├── integration/        # 結合テスト（実 Redis / 実 API を使うものは明示フラグでオプトイン）
+├── e2e/                # Bot の主要フローを通すテスト（Discord と fetch のみ差し替え）
 └── fixtures/           # テストフィクスチャ
 packages/
 └── shared/             # Bot・Dashboard 共通パッケージ @twitterrx/shared
@@ -189,7 +190,15 @@ scope は省略可能。description は日本語でも英語でもよいが、�
 
 - **未実行を成功扱いにしない**: 依存が無いときに `if (!available) return;` で早期 return すると、テストが緑のまま何も検証しない。依存の有無は `skipIf` で表明し、実行されなかったことがレポートに `skipped` として残るようにする。
 
-- `tests/integration/` に置くテストは**必ずいずれかのフラグでゲートする**。ゲートの無いテストを置くと、通常の `test` ジョブ（`npm run test:coverage`）が外部依存を巻き込んで不安定になる。外部依存の要らないテストは `tests/unit/` に置く。
+- `tests/integration/` と `tests/e2e/` に置くテストは**必ずいずれかのフラグでゲートする**。ゲートの無いテストを置くと、通常の `test` ジョブ（`npm run test:coverage`）が外部依存を巻き込んで不安定になる。外部依存の要らないテストは `tests/unit/` に置く。
+
+- E2E（`tests/e2e/`）は Bot の主要フロー（メッセージ受信 → URL 判定 → 取得 → 表示の組み立て → 送信）を通す。差し替えるのは **Discord と `fetch` の 2 箇所だけ**で、Core / Adapter は本物を動かす。外部 API を `ITwitterAdapter` ごと差し替えると単体テストと守備範囲が重なるため、`fetch` 層で差し替える。詳細は `tests/e2e/README.md` と ADR 0007。
+
+  ```bash
+  RUN_REDIS_INTEGRATION=1 REDIS_URL=redis://127.0.0.1:6390 npm run test:e2e
+  ```
+
+- **テストが噛んでいるか確かめてからコミットする**: 新しく書いたテストは、本番コードを一時的に壊して狙ったテストが落ちることを確認する。通ったことより、壊したときに落ちることのほうが情報量が多い。
 
 - **外部の実リソースを指すアサーションは、消えても気づけない**: 実在する URL のサイズや内容に依存するテストは、対象が消えた後もエラーページの応答で緑を返しうる（#607 で実例があった）。実 API を叩くテストは「取得できること・スキーマに適合すること」に留め、特定リソースの中身の値には依存させない。
 
