@@ -49,8 +49,7 @@ src/
 └── index.ts            # エントリポイント（DI コンテナ兼用）
 tests/
 ├── unit/               # 単体テスト（モック使用）
-├── integration/        # 結合テスト
-├── e2e/                # E2E テスト
+├── integration/        # 結合テスト（実 Redis / 実 API を使うものは明示フラグでオプトイン）
 └── fixtures/           # テストフィクスチャ
 packages/
 └── shared/             # Bot・Dashboard 共通パッケージ @twitterrx/shared
@@ -176,6 +175,19 @@ scope は省略可能。description は日本語でも英語でもよいが、�
   ```bash
   RUN_LIVE_API_TESTS=1 npx vitest run tests/integration/fxtwitterContract.test.ts
   ```
+
+- 実 Redis を要するテスト: `describe.skipIf(!RUN)` で `RUN_REDIS_INTEGRATION=1` のときだけ実行する。CI では `integration-redis` ジョブが Redis サービス付きで名指し実行する。
+
+  ```bash
+  docker run -d --rm --name twrx-test-redis -p 6390:6379 redis:8.2.2-alpine
+  RUN_REDIS_INTEGRATION=1 REDIS_URL=redis://127.0.0.1:6390 \
+    npx vitest run tests/integration/channel-config.test.ts
+  docker rm -f twrx-test-redis
+  ```
+
+  被験体（Repository 等）と同じ Redis 接続（`@/db/init` の `redis`）でテストデータを書くこと。別クライアントを立てて書き込むと「書いたのに読めない」状態を作り込み、結合を検証できない。
+
+- **未実行を成功扱いにしない**: 依存が無いときに `if (!available) return;` で早期 return すると、テストが緑のまま何も検証しない。依存の有無は `skipIf` で表明し、実行されなかったことがレポートに `skipped` として残るようにする。
 
 ### Redis キー命名規則
 

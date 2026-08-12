@@ -159,8 +159,14 @@ jobs:
       - name: Build shared package
         run: npm run build:shared
 
-      - name: Run announcement Streams integration tests
-        run: npx vitest run tests/integration/announcement-stream.test.ts
+      # 実 Redis を要するテストのみを名指しで実行する。
+      # tests/integration を丸ごと指定すると、ネットワーク依存の
+      # http-client / twitter-api も巻き込まれて不安定になるため。
+      - name: Run Redis integration tests
+        run: |
+          npx vitest run \
+            tests/integration/announcement-stream.test.ts \
+            tests/integration/channel-config.test.ts
         env:
           RUN_REDIS_INTEGRATION: "1"
           REDIS_URL: redis://localhost:6379

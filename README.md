@@ -22,7 +22,7 @@ Twitter/X の投稿 URL を Discord 上で見やすい Embed に展開する、�
 TwitterRX/
 ├── src/                  # Bot 本体
 ├── packages/shared/      # Bot・Dashboard 共通パッケージ
-├── tests/                # unit / integration / e2e テスト
+├── tests/                # unit / integration テスト
 ├── openapi/              # 外部 API のスキーマ
 ├── docs/                 # アーキテクチャ・仕様資料
 ├── compose.yml           # ローカル開発用 Docker Compose
