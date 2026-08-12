@@ -38,6 +38,7 @@
     "compile:test": "tsc -p . --noEmit",
     "compile:tests": "tsc -p tsconfig.test.json --noEmit",
     "build": "npm run build:shared && npm run compile",
+    "verify:dist": "node scripts/check-dist-resolution.mjs",
     "build:shared": "npm run build --workspace=@rx-twitter/shared",
     "test": "vitest",
     "test:unit": "vitest run tests/unit",
