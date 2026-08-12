@@ -2,7 +2,20 @@ import { describe, it, expect } from "vitest";
 import { TEST_URLS } from "../fixtures/test-urls";
 import { TwitterAdapter } from "@/adapters/twitter/TwitterAdapter";
 
-describe("Twitter API統合テスト", () => {
+/**
+ * vxTwitter / FxTwitter の実 API に対する統合テスト。
+ *
+ * アダプタの変換ロジックとフォールバックの分岐自体は tests/unit/adapters/twitter/ が
+ * モックで網羅している。ここでしか見られないのは、実 API が実際に応答し、
+ * 期待する形のデータを返すことである。
+ *
+ * 外部サービスの都合（障害・レート制限・対象ツイートの削除）で落ちるため既定では
+ * skip し、RUN_LIVE_API_TESTS=1 でオプトインする。
+ *   RUN_LIVE_API_TESTS=1 npx vitest run tests/integration/twitter-api.test.ts
+ */
+const RUN = process.env.RUN_LIVE_API_TESTS === "1";
+
+describe.skipIf(!RUN)("Twitter API統合テスト", () => {
   const adapter = TwitterAdapter.createDefault();
 
   // CI環境では外部APIへのアクセスが遅い可能性があるため、タイムアウトを長めに設定

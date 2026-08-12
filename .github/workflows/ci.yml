@@ -159,14 +159,13 @@ jobs:
       - name: Build shared package
         run: npm run build:shared
 
-      # 実 Redis を要するテストのみを名指しで実行する。
-      # tests/integration を丸ごと指定すると、ネットワーク依存の
-      # http-client / twitter-api も巻き込まれて不安定になるため。
+      # tests/integration のテストは全て明示フラグでゲートされているため、
+      # ディレクトリ指定でよい。RUN_REDIS_INTEGRATION だけを立てるので、
+      # 実 API を叩くテスト（RUN_LIVE_API_TESTS）は skipped のまま残る。
+      # ファイル名を列挙しないことで、テスト追加時に CI への追記を忘れても
+      # 実行対象から漏れない。
       - name: Run Redis integration tests
-        run: |
-          npx vitest run \
-            tests/integration/announcement-stream.test.ts \
-            tests/integration/channel-config.test.ts
+        run: npx vitest run tests/integration
         env:
           RUN_REDIS_INTEGRATION: "1"
           REDIS_URL: redis://localhost:6379

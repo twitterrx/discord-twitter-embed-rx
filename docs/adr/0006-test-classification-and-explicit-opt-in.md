@@ -71,11 +71,20 @@ describe.skipIf(!RUN)("チャンネル設定 (integration, real Redis)", () => {
 本件のように「書いたのに読めない」構成をテスト側が作り込んでしまい、検証したいはずの結合が
 検証されない。
 
-### 4. CI は実 Redis テストを名指しで実行する
+### 4. `tests/integration/` に置くテストは必ずフラグでゲートする
 
-`integration-redis` ジョブ（Redis サービス付き）で対象ファイルを列挙する。`tests/integration` を
-丸ごと指定しない — このディレクトリにはネットワーク依存の `http-client` / `twitter-api` が同居して
-おり、巻き込むとジョブが外部都合で落ちるため（これらの扱いは #607）。
+ゲートされていないテストが混ざると、通常の `test` ジョブ（`npm run test:coverage`、対象は全
+ディレクトリ）が外部依存を巻き込んで不安定になる。外部依存の要らないテストは `tests/unit/` に置く。
+
+この不変条件が保たれている限り、CI の `integration-redis` ジョブは `tests/integration` を
+**ディレクトリ指定**で実行してよい。`RUN_REDIS_INTEGRATION` だけを立てるため、実 API を叩く
+テスト（`RUN_LIVE_API_TESTS`）は `skipped` のまま残る。ファイル名を列挙しないので、テストを
+追加したとき CI への追記を忘れても実行対象から漏れない。
+
+> この項は当初「対象ファイルを名指しで実行する」としていた。当時 `tests/integration/` に
+> ネットワークを無条件に叩く `http-client` / `twitter-api` が同居しており、ディレクトリ指定では
+> 巻き込んでしまったためである。#607 で両者を整理（前者は削除、後者は `RUN_LIVE_API_TESTS` で
+> ゲート）し、全ファイルがゲート済みになったので上記へ改めた。
 
 ## Consequences
 
@@ -91,13 +100,14 @@ describe.skipIf(!RUN)("チャンネル設定 (integration, real Redis)", () => {
 
 - Bot 全体を通す E2E が現時点で存在しない。メッセージ受信から Embed 送信までの経路は、
   ユニットテストの合成でしか担保されていない。
-- Redis 統合テストは CI で名指し実行のため、新しくファイルを足したときに CI への追加を
-  忘れるとローカルでしか走らない。
+- 実 API を叩くテストは CI で実行されないため、上流のドリフトは誰かが手元でオプトイン実行する
+  まで検知されない。
 
 ### Mitigation
 
 - Bot 全体の E2E は #608 で構想を起票済み。着手時に `tests/e2e/` を規約ごと再導入する。
-- 実 Redis テストの追加手順（`skipIf` 規約と CI ジョブへの追記）を AGENTS.md のテスト節に記載した。
+- 実 API テストの定期実行は #610 で検討する。
+- 実 Redis テストの追加手順（`skipIf` 規約）を AGENTS.md のテスト節に記載した。
 
 ## Alternatives considered
 
