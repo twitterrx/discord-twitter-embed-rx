@@ -170,13 +170,13 @@ scope は省略可能。description は日本語でも英語でもよいが、�
 - テストランナー: Vitest（globals: true, sourceMap 対応）。
 - カバレッジ: vitest --coverage（v8 provider）。
 - 外部 API レスポンスの fixture: `tests/fixtures/fxtwitter/` に実 API の payload をそのまま置く。手書きモックだけではスキーマの思い込みをテストしてしまう。
-- 上流 API のドリフト検知: 保存済み fixture は自スキーマの回帰しか守れないため、実 API を叩く契約テストを `tests/integration/fxtwitterContract.test.ts` に置く。ネットワーク依存で不安定なので既定は skip、`RUN_LIVE_API_TESTS=1` でオプトインする。
+- 上流 API のドリフト検知: 保存済み fixture は自スキーマの回帰しか守れないため、実 API を叩くテストを `tests/integration/` に置く（`fxtwitterContract.test.ts` はスキーマの契約、`twitter-api.test.ts` は取得とフォールバックの振る舞い）。ネットワーク依存で不安定なので既定は skip、`RUN_LIVE_API_TESTS=1` でオプトインする。CI では実行しない（外部都合で PR が落ちないようにするため）。
 
   ```bash
   RUN_LIVE_API_TESTS=1 npx vitest run tests/integration/fxtwitterContract.test.ts
   ```
 
-- 実 Redis を要するテスト: `describe.skipIf(!RUN)` で `RUN_REDIS_INTEGRATION=1` のときだけ実行する。CI では `integration-redis` ジョブが Redis サービス付きで名指し実行する。
+- 実 Redis を要するテスト: `describe.skipIf(!RUN)` で `RUN_REDIS_INTEGRATION=1` のときだけ実行する。CI では `integration-redis` ジョブが Redis サービス付きで `tests/integration` をディレクトリ指定で実行する（`RUN_LIVE_API_TESTS` は立てないので実 API のテストは skipped のまま残る）。
 
   ```bash
   docker run -d --rm --name twrx-test-redis -p 6390:6379 redis:8.2.2-alpine
@@ -188,6 +188,10 @@ scope は省略可能。description は日本語でも英語でもよいが、�
   被験体（Repository 等）と同じ Redis 接続（`@/db/init` の `redis`）でテストデータを書くこと。別クライアントを立てて書き込むと「書いたのに読めない」状態を作り込み、結合を検証できない。
 
 - **未実行を成功扱いにしない**: 依存が無いときに `if (!available) return;` で早期 return すると、テストが緑のまま何も検証しない。依存の有無は `skipIf` で表明し、実行されなかったことがレポートに `skipped` として残るようにする。
+
+- `tests/integration/` に置くテストは**必ずいずれかのフラグでゲートする**。ゲートの無いテストを置くと、通常の `test` ジョブ（`npm run test:coverage`）が外部依存を巻き込んで不安定になる。外部依存の要らないテストは `tests/unit/` に置く。
+
+- **外部の実リソースを指すアサーションは、消えても気づけない**: 実在する URL のサイズや内容に依存するテストは、対象が消えた後もエラーページの応答で緑を返しうる（#607 で実例があった）。実 API を叩くテストは「取得できること・スキーマに適合すること」に留め、特定リソースの中身の値には依存させない。
 
 ### Redis キー命名規則
 
