@@ -159,13 +159,13 @@ jobs:
       - name: Build shared package
         run: npm run build:shared
 
-      # tests/integration のテストは全て明示フラグでゲートされているため、
-      # ディレクトリ指定でよい。RUN_REDIS_INTEGRATION だけを立てるので、
+      # tests/integration と tests/e2e のテストは全て明示フラグでゲートされて
+      # いるため、ディレクトリ指定でよい。RUN_REDIS_INTEGRATION だけを立てるので、
       # 実 API を叩くテスト（RUN_LIVE_API_TESTS）は skipped のまま残る。
       # ファイル名を列挙しないことで、テスト追加時に CI への追記を忘れても
       # 実行対象から漏れない。
-      - name: Run Redis integration tests
-        run: npx vitest run tests/integration
+      - name: Run Redis integration and E2E tests
+        run: npx vitest run tests/integration tests/e2e
         env:
           RUN_REDIS_INTEGRATION: "1"
           REDIS_URL: redis://localhost:6379
