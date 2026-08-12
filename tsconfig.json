@@ -3,6 +3,20 @@
     "target": "ES2022",
     "module": "ES2022",
     "lib": ["ES2022"],
+    // バンドラは使っていないが、この設定でなければ現行のビルドは成立しない。
+    // ソースは拡張子なしの相対 import・ディレクトリ import（"./generated/model"）・
+    // "@/" エイリアスを使っており、いずれも Node ESM が解決できない形である。
+    // 橋渡しは tsc-alias --resolve-full-paths が担い、dist で拡張子と index を補う。
+    //
+    //   src:  from "./generated/model"  →  dist: from "./generated/model/index.js"
+    //   src:  from "@/utils/logger"     →  dist: from "../../utils/logger.js"
+    //
+    // NodeNext へ移すには 123 箇所の import に .js を書き、ディレクトリ import を
+    // 展開する必要がある。加えて orval（npm run gen:api）が拡張子なしで生成するため、
+    // 生成のたびに壊れる。得られるものに見合わないと判断した（#591）。
+    //
+    // この橋が外れても型検査は通ってしまうため、ビルド成果物の解決を
+    // scripts/check-dist-resolution.mjs で検証している（npm run verify:dist）。
     "moduleResolution": "bundler",
     "paths": {
       "@/*": ["./src/*"]
@@ -16,10 +30,9 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
-    "declaration": true
+    "allowSyntheticDefaultImports": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests", "dashboard", "packages"],
+  "exclude": ["node_modules", "dist", "tests", "packages"],
   "compileOnSave": false
 }
