@@ -1,6 +1,6 @@
 {
   "name": "rx-twitter",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Twitter/Xの投稿URLをDiscord上で見やすいEmbedに展開するBot",
   "type": "module",
   "imports": {
@@ -59,7 +59,7 @@
     "@rx-twitter/shared": "*",
     "chalk": "^5.3.0",
     "discord.js": "^14.27.0",
-    "hono": "^4.12.25",
+    "hono": "^4.13.0",
     "js-yaml": "^5.2.2",
     "redis": "^6.0.0",
     "winston": "^3.17.0",
