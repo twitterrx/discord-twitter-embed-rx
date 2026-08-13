@@ -1,20 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HttpResponseError, ResponseContentTypeError } from "@/infrastructure/http/orvalFetch";
-import { VxTwitterApi, VxTwitterServerError } from "@/vxtwitter/api";
-import { VxTwitterStatus } from "@/vxtwitter/generated/model";
-import type { VxTwitter } from "@/vxtwitter/vxtwitter";
+import { HttpResponseError, ResponseContentTypeError } from "#/infrastructure/http/orvalFetch.js";
+import { VxTwitterApi, VxTwitterServerError } from "#/vxtwitter/api.js";
+import { VxTwitterStatus } from "#/vxtwitter/generated/model/index.js";
+import type { VxTwitter } from "#/vxtwitter/vxtwitter.js";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock("@/vxtwitter/generated/default", () => ({
+vi.mock("#/vxtwitter/generated/default.js", () => ({
   getPostInformation: vi.fn(),
 }));
 
-import { getPostInformation } from "@/vxtwitter/generated/default";
-import logger from "@/utils/logger";
+import { getPostInformation } from "#/vxtwitter/generated/default.js";
+import logger from "#/utils/logger.js";
 
 const mockGetPostInformation = vi.mocked(getPostInformation);
 

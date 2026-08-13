@@ -7,13 +7,13 @@ import {
   type Announcement,
 } from "@rx-twitter/shared";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { redis } from "@/db/init";
-import { RedisAnnouncementRepository } from "@/infrastructure/db/RedisAnnouncementRepository";
-import { AnnouncementStreamConsumer } from "@/infrastructure/stream/AnnouncementStreamConsumer";
+import { redis } from "#/db/init.js";
+import { RedisAnnouncementRepository } from "#/infrastructure/db/RedisAnnouncementRepository.js";
+import { AnnouncementStreamConsumer } from "#/infrastructure/stream/AnnouncementStreamConsumer.js";
 
 /**
  * 実 Redis を用いた Streams 配信の統合テスト。

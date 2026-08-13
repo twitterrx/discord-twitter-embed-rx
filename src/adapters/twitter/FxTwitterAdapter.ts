@@ -1,8 +1,8 @@
-import { BaseTwitterAdapter, ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
-import type { Tweet, TweetArticle, TweetMedia } from "@/core/models/Tweet";
-import { FxTwitterApi } from "@/fxtwitter/api";
-import type { SocialThreadOutput, APITwitterStatus } from "@/fxtwitter/generated/model";
-import logger from "@/utils/logger";
+import { BaseTwitterAdapter, ITwitterAdapter } from "#/adapters/twitter/BaseTwitterAdapter.js";
+import type { Tweet, TweetArticle, TweetMedia } from "#/core/models/Tweet.js";
+import { FxTwitterApi } from "#/fxtwitter/api.js";
+import type { SocialThreadOutput, APITwitterStatus } from "#/fxtwitter/generated/model/index.js";
+import logger from "#/utils/logger.js";
 
 /**
  * FxTwitter API アダプター

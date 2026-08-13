@@ -1,4 +1,4 @@
-import { Tweet, TweetAuthor, TweetMetrics } from "@/core/models/Tweet";
+import { Tweet, TweetAuthor, TweetMetrics } from "#/core/models/Tweet.js";
 
 /**
  * Twitterデータ取得のための統一インターフェース

@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
 import type { Message } from "discord.js";
-import { OwnerCommandHandler } from "@/adapters/discord/OwnerCommandHandler";
-import type { ChannelConfigService } from "@/core/services/ChannelConfigService";
-import { BanService } from "@/core/services/BanService";
+import { OwnerCommandHandler } from "#/adapters/discord/OwnerCommandHandler.js";
+import type { ChannelConfigService } from "#/core/services/ChannelConfigService.js";
+import { BanService } from "#/core/services/BanService.js";
 
 // Collection ライクな Map（.map() / .filter() / .size を生やす）
 class MockCollection<K, V> extends Map<K, V> {

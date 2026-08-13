@@ -1,6 +1,6 @@
-import type { BanEntry, BanTargetType, IBanRepository } from "@/core/models/BanEntry";
-import { redis } from "@/db/init";
-import logger from "@/utils/logger";
+import type { BanEntry, BanTargetType, IBanRepository } from "#/core/models/BanEntry.js";
+import { redis } from "#/db/init.js";
+import logger from "#/utils/logger.js";
 
 const BAN_SET_KEY = "app:ban:list";
 const BAN_META_PREFIX_USER = "app:ban:user:";

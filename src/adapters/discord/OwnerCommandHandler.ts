@@ -1,10 +1,10 @@
 import type { EmbedVersion } from "@rx-twitter/shared";
 import type { Client, Message } from "discord.js";
 
-import type { BanEntry } from "@/core/models/BanEntry";
-import { BanService } from "@/core/services/BanService";
-import { ChannelConfigService } from "@/core/services/ChannelConfigService";
-import logger from "@/utils/logger";
+import type { BanEntry } from "#/core/models/BanEntry.js";
+import { BanService } from "#/core/services/BanService.js";
+import { ChannelConfigService } from "#/core/services/ChannelConfigService.js";
+import logger from "#/utils/logger.js";
 
 /**
  * Owner コマンドのパース結果

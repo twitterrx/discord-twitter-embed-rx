@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { HealthServer } from "@/infrastructure/http/HealthServer";
+import { HealthServer } from "#/infrastructure/http/HealthServer.js";
 
-import type { HealthCheckDependencies } from "@/infrastructure/http/HealthServer";
+import type { HealthCheckDependencies } from "#/infrastructure/http/HealthServer.js";
 
 // logger をモック
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

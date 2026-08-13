@@ -1,5 +1,5 @@
-import { TweetMedia } from "@/core/models/Tweet";
-import logger from "@/utils/logger";
+import { TweetMedia } from "#/core/models/Tweet.js";
+import logger from "#/utils/logger.js";
 
 export interface MediaFilterResult {
   downloadable: TweetMedia[];

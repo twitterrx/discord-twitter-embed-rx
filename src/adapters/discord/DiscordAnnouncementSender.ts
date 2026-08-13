@@ -1,7 +1,7 @@
 import type { Announcement } from "@rx-twitter/shared";
 import { type Client, EmbedBuilder } from "discord.js";
 
-import type { IAnnouncementSender } from "@/core/models/Announcement";
+import type { IAnnouncementSender } from "#/core/models/Announcement.js";
 
 /** お知らせ Embed の色（Bot のブランドカラー） */
 const ANNOUNCEMENT_EMBED_COLOR = 9016025;

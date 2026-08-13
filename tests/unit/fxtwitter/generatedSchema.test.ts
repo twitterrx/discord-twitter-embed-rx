@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { SocialThread } from "@/fxtwitter/generated/model";
+import { SocialThread } from "#/fxtwitter/generated/model/index.js";
 
 describe("SocialThread schema", () => {
   it("nullable な status と author を受理する", () => {

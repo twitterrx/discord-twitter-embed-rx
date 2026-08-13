@@ -10,9 +10,9 @@ import {
   TextDisplayBuilder,
 } from "discord.js";
 
-import type { Tweet } from "@/core/models/Tweet";
+import type { Tweet } from "#/core/models/Tweet.js";
 
-import { buildTweetBody, formatPollOptions, truncate } from "./tweetText";
+import { buildTweetBody, formatPollOptions, truncate } from "./tweetText.js";
 
 /** Embed と同じアクセントカラーを引き継ぐ */
 const ACCENT_COLOR = 9016025;

@@ -1,4 +1,4 @@
-import { redis } from "./init";
+import { redis } from "./init.js";
 
 export interface ReplyInfo {
   replyIds: string[];

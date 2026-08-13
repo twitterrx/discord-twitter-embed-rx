@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { TEST_URLS, TEST_MESSAGES } from "../../fixtures/test-urls";
-import { TweetProcessor } from "@/core/services/TweetProcessor";
-import { mediaUrl } from "../../fixtures/testMediaUrl";
+import { TEST_URLS, TEST_MESSAGES } from "../../fixtures/test-urls.js";
+import { TweetProcessor } from "#/core/services/TweetProcessor.js";
+import { mediaUrl } from "../../fixtures/testMediaUrl.js";
 
 describe("TweetProcessor", () => {
   const processor = new TweetProcessor();

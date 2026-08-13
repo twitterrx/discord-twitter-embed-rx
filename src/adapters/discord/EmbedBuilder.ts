@@ -1,8 +1,8 @@
 import { APIEmbedField, EmbedBuilder } from "discord.js";
 
-import { Tweet, TweetPollOption } from "@/core/models/Tweet";
+import { Tweet, TweetPollOption } from "#/core/models/Tweet.js";
 
-import { buildTweetBody, formatPollOptions, truncate } from "./tweetText";
+import { buildTweetBody, formatPollOptions, truncate } from "./tweetText.js";
 
 /**
  * Discord Embed作成を担当

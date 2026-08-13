@@ -1,6 +1,6 @@
 import { createClient } from "redis";
 
-import logger from "@/utils/logger";
+import logger from "#/utils/logger.js";
 
 if (!process.env.REDIS_URL) {
   logger.warn("REDIS_URL is not set, using default localhost");

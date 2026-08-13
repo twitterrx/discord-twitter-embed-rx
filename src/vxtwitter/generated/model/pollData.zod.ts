@@ -7,7 +7,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import { z as zod } from 'zod';
-import { PollOption } from './pollOption.zod';
+import { PollOption } from './pollOption.zod.js';
 
 export const PollData = zod.object({
   "options": zod.array(PollOption).optional()

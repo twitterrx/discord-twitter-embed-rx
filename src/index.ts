@@ -5,38 +5,38 @@ import type { Announcement } from "@rx-twitter/shared";
 import { DASHBOARD_VERSION_FALLBACK, DASHBOARD_VERSION_KEY } from "@rx-twitter/shared";
 import { Client, GatewayIntentBits, Message, Partials, ChannelType } from "discord.js";
 
-import { ComponentsV2Builder } from "@/adapters/discord/ComponentsV2Builder";
-import { DiscordAnnouncementSender } from "@/adapters/discord/DiscordAnnouncementSender";
-import { DiscordEmbedBuilder } from "@/adapters/discord/EmbedBuilder";
-import { MessageHandler } from "@/adapters/discord/MessageHandler";
-import { OwnerCommandHandler } from "@/adapters/discord/OwnerCommandHandler";
-import { TwitterAdapter } from "@/adapters/twitter/TwitterAdapter";
-import type { GuildDeliveryTarget } from "@/core/models/Announcement";
-import { AnnouncementService } from "@/core/services/AnnouncementService";
-import { ArticlePostService } from "@/core/services/ArticlePostService";
-import { BanService } from "@/core/services/BanService";
-import { ChannelConfigService } from "@/core/services/ChannelConfigService";
-import { MediaHandler } from "@/core/services/MediaHandler";
-import { TweetProcessor } from "@/core/services/TweetProcessor";
-import { RedisAnnouncementRepository } from "@/infrastructure/db/RedisAnnouncementRepository";
-import { RedisArticlePostRepository } from "@/infrastructure/db/RedisArticlePostRepository";
-import { RedisBanRepository } from "@/infrastructure/db/RedisBanRepository";
-import { RedisChannelConfigRepository } from "@/infrastructure/db/RedisChannelConfigRepository";
-import { RedisReplyLogger } from "@/infrastructure/db/RedisReplyLogger";
-import { FileManager } from "@/infrastructure/filesystem/FileManager";
-import { HealthServer } from "@/infrastructure/http/HealthServer";
-import type { HealthCheckDependencies } from "@/infrastructure/http/HealthServer";
-import { HttpClient } from "@/infrastructure/http/HttpClient";
-import { VideoDownloader } from "@/infrastructure/http/VideoDownloader";
-import { AnnouncementStreamConsumer } from "@/infrastructure/stream/AnnouncementStreamConsumer";
-import { cleanupOrphanedConfigs } from "@/utils/cleanupOrphanedConfigs";
-import logger from "@/utils/logger";
+import { ComponentsV2Builder } from "#/adapters/discord/ComponentsV2Builder.js";
+import { DiscordAnnouncementSender } from "#/adapters/discord/DiscordAnnouncementSender.js";
+import { DiscordEmbedBuilder } from "#/adapters/discord/EmbedBuilder.js";
+import { MessageHandler } from "#/adapters/discord/MessageHandler.js";
+import { OwnerCommandHandler } from "#/adapters/discord/OwnerCommandHandler.js";
+import { TwitterAdapter } from "#/adapters/twitter/TwitterAdapter.js";
+import type { GuildDeliveryTarget } from "#/core/models/Announcement.js";
+import { AnnouncementService } from "#/core/services/AnnouncementService.js";
+import { ArticlePostService } from "#/core/services/ArticlePostService.js";
+import { BanService } from "#/core/services/BanService.js";
+import { ChannelConfigService } from "#/core/services/ChannelConfigService.js";
+import { MediaHandler } from "#/core/services/MediaHandler.js";
+import { TweetProcessor } from "#/core/services/TweetProcessor.js";
+import { RedisAnnouncementRepository } from "#/infrastructure/db/RedisAnnouncementRepository.js";
+import { RedisArticlePostRepository } from "#/infrastructure/db/RedisArticlePostRepository.js";
+import { RedisBanRepository } from "#/infrastructure/db/RedisBanRepository.js";
+import { RedisChannelConfigRepository } from "#/infrastructure/db/RedisChannelConfigRepository.js";
+import { RedisReplyLogger } from "#/infrastructure/db/RedisReplyLogger.js";
+import { FileManager } from "#/infrastructure/filesystem/FileManager.js";
+import { HealthServer } from "#/infrastructure/http/HealthServer.js";
+import type { HealthCheckDependencies } from "#/infrastructure/http/HealthServer.js";
+import { HttpClient } from "#/infrastructure/http/HttpClient.js";
+import { VideoDownloader } from "#/infrastructure/http/VideoDownloader.js";
+import { AnnouncementStreamConsumer } from "#/infrastructure/stream/AnnouncementStreamConsumer.js";
+import { cleanupOrphanedConfigs } from "#/utils/cleanupOrphanedConfigs.js";
+import logger from "#/utils/logger.js";
 
-import config, { ROOT_DIR } from "./config/config";
-import { resolveFallbackPolicies } from "./config/fallbackPolicy";
-import { connectRedis } from "./db/connect";
-import { redis } from "./db/init";
-import { deleteReply, popReply } from "./db/replyLogger";
+import config, { ROOT_DIR } from "./config/config.js";
+import { resolveFallbackPolicies } from "./config/fallbackPolicy.js";
+import { connectRedis } from "./db/connect.js";
+import { redis } from "./db/init.js";
+import { deleteReply, popReply } from "./db/replyLogger.js";
 
 enum ApplicationMode {
   Production = "production",
@@ -253,7 +253,7 @@ client.on("clientReady", async () => {
     }
 
     try {
-      const redis = (await import("@/db/init")).redis;
+      const redis = (await import("#/db/init.js")).redis;
 
       // joined フラグを設定
       await redis.set(`app:guild:${guildId}:joined`, "1");
@@ -281,7 +281,7 @@ client.on("clientReady", async () => {
 
   // P2: 孤立した config のクリーンアップ（オプション）
   try {
-    const redis = (await import("@/db/init")).redis;
+    const redis = (await import("#/db/init.js")).redis;
     await cleanupOrphanedConfigs(client, redis);
   } catch (err) {
     logger.error("[Bot] Failed to cleanup orphaned configs:", err);
@@ -297,7 +297,7 @@ client.on("clientReady", async () => {
     async () => {
       for (const [guildId, guild] of client.guilds.cache) {
         try {
-          const redis = (await import("@/db/init")).redis;
+          const redis = (await import("#/db/init.js")).redis;
           const channels = await guild.channels.fetch();
           const textChannels = channels
             .filter((ch) => ch?.type === ChannelType.GuildText)
@@ -375,7 +375,7 @@ client.on("guildCreate", async (guild) => {
   }
 
   try {
-    const redis = (await import("@/db/init")).redis;
+    const redis = (await import("#/db/init.js")).redis;
 
     // joined フラグを設定
     await redis.set(`app:guild:${guild.id}:joined`, "1");
@@ -404,7 +404,7 @@ client.on("guildCreate", async (guild) => {
 // P0: guildDelete - Bot がサーバーから退出した時
 client.on("guildDelete", async (guild) => {
   try {
-    const redis = (await import("@/db/init")).redis;
+    const redis = (await import("#/db/init.js")).redis;
 
     // P0: config は削除しない（再参加時の全許可防止）
     // joined フラグのみ削除
@@ -443,7 +443,7 @@ const updateStatus = async () => {
 
   let dashboardVersion: string;
   try {
-    const redis = (await import("@/db/init")).redis;
+    const redis = (await import("#/db/init.js")).redis;
     const value = await redis.get(DASHBOARD_VERSION_KEY);
     dashboardVersion = value ? `v${value}` : DASHBOARD_VERSION_FALLBACK;
   } catch {
@@ -478,7 +478,7 @@ async function shutdown(): Promise<void> {
     await channelConfigService.shutdown();
 
     // Redis 接続のクローズ
-    const redis = (await import("@/db/init")).redis;
+    const redis = (await import("#/db/init.js")).redis;
     await redis.quit();
 
     // Discord Client のログアウト

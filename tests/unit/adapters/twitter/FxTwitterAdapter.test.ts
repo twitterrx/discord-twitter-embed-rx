@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { mediaUrl } from "../../../fixtures/testMediaUrl";
+import { mediaUrl } from "../../../fixtures/testMediaUrl.js";
 
-import type { FxTwitterApi } from "@/fxtwitter/api";
+import type { FxTwitterApi } from "#/fxtwitter/api.js";
 import type {
   SocialThreadOutput,
   APITwitterStatus,
   APITwitterStatusArticle,
   APIUser,
   APITwitterStatusMedia,
-} from "@/fxtwitter/generated/model";
-import { APITwitterStatus as APITwitterStatusSchema } from "@/fxtwitter/generated/model";
-import { FxTwitterAdapter } from "@/adapters/twitter/FxTwitterAdapter";
-import logger from "@/utils/logger";
+} from "#/fxtwitter/generated/model/index.js";
+import { APITwitterStatus as APITwitterStatusSchema } from "#/fxtwitter/generated/model/index.js";
+import { FxTwitterAdapter } from "#/adapters/twitter/FxTwitterAdapter.js";
+import logger from "#/utils/logger.js";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

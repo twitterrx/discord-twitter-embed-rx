@@ -1,10 +1,10 @@
-import { Tweet } from "@/core/models/Tweet";
-import logger from "@/utils/logger";
-import { VxTwitterServerError } from "@/vxtwitter/api";
+import { Tweet } from "#/core/models/Tweet.js";
+import logger from "#/utils/logger.js";
+import { VxTwitterServerError } from "#/vxtwitter/api.js";
 
-import { ITwitterAdapter } from "./BaseTwitterAdapter";
-import { FxTwitterAdapter } from "./FxTwitterAdapter";
-import { VxTwitterAdapter } from "./VxTwitterAdapter";
+import { ITwitterAdapter } from "./BaseTwitterAdapter.js";
+import { FxTwitterAdapter } from "./FxTwitterAdapter.js";
+import { VxTwitterAdapter } from "./VxTwitterAdapter.js";
 
 /**
  * 複数のTwitterアダプターを統合し、フォールバック機能を提供

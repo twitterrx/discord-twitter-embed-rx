@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
-import { mediaUrl } from "../../../fixtures/testMediaUrl";
+import { mediaUrl } from "../../../fixtures/testMediaUrl.js";
 
-import type { VxTwitterApi } from "@/vxtwitter/api";
-import { VxTwitterServerError } from "@/vxtwitter/api";
-import type { VxTwitter, MediaExtended } from "@/vxtwitter/vxtwitter";
-import { VxTwitterAdapter } from "@/adapters/twitter/VxTwitterAdapter";
+import type { VxTwitterApi } from "#/vxtwitter/api.js";
+import { VxTwitterServerError } from "#/vxtwitter/api.js";
+import type { VxTwitter, MediaExtended } from "#/vxtwitter/vxtwitter.js";
+import { VxTwitterAdapter } from "#/adapters/twitter/VxTwitterAdapter.js";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
