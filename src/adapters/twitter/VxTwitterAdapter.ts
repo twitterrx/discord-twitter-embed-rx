@@ -1,9 +1,9 @@
-import { BaseTwitterAdapter, ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
-import type { Tweet, TweetArticle, TweetMedia } from "@/core/models/Tweet";
-import { extractArticleId } from "@/core/services/TweetProcessor";
-import logger from "@/utils/logger";
-import { VxTwitterApi, VxTwitterServerError } from "@/vxtwitter/api";
-import type { VxTwitter } from "@/vxtwitter/vxtwitter";
+import { BaseTwitterAdapter, ITwitterAdapter } from "#/adapters/twitter/BaseTwitterAdapter.js";
+import type { Tweet, TweetArticle, TweetMedia } from "#/core/models/Tweet.js";
+import { extractArticleId } from "#/core/services/TweetProcessor.js";
+import logger from "#/utils/logger.js";
+import { VxTwitterApi, VxTwitterServerError } from "#/vxtwitter/api.js";
+import type { VxTwitter } from "#/vxtwitter/vxtwitter.js";
 
 /**
  * VxTwitter API アダプター

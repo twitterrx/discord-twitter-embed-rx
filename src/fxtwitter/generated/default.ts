@@ -8,9 +8,9 @@
 import type {
   Get2StatusIdParams,
   SocialThread
-} from './model';
+} from './model/index.js';
 
-import { orvalFetch } from '../../infrastructure/http/orvalFetch';
+import { orvalFetch } from '../../infrastructure/http/orvalFetch.js';
 
 
 export const getGet2StatusIdUrl = (id: string,

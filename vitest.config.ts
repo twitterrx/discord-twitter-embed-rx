@@ -6,7 +6,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    exclude: ["node_modules", "dist", "dashboard/**"],
+    exclude: ["node_modules", "dist"],
     globalSetup: "./tests/globalSetup.ts",
     env: {
       NODE_ENV: "test",
@@ -20,16 +20,20 @@ export default defineConfig({
       exclude: [
         "node_modules/",
         "dist/",
+        // テストコードは計測対象ではない。*.test.ts だけを除くと、
+        // ヘルパーやフェイク（tests/e2e/discordFake.ts 等）が素通りして
+        // 計測に混ざる。依存を要するテストが skip された実行では、
+        // それらは import されるだけで実行率が落ち、数字を歪める。
+        "tests/**",
         "**/*.test.ts",
         "**/*.spec.ts",
-        "**/fixtures/**",
         "src/**/generated/**",
       ],
     },
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "#": path.resolve(__dirname, "./src"),
     },
   },
 });

@@ -1,5 +1,5 @@
-import type { FallbackPolicies, FallbackPolicy } from "@/core/services/ChannelConfigService";
-import logger from "@/utils/logger";
+import type { FallbackPolicies, FallbackPolicy } from "#/core/services/ChannelConfigService.js";
+import logger from "#/utils/logger.js";
 
 /**
  * フォールバック設定の環境変数を解釈する

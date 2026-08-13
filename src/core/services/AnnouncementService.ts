@@ -5,8 +5,8 @@ import type {
   GuildDeliveryTarget,
   IAnnouncementRepository,
   IAnnouncementSender,
-} from "@/core/models/Announcement";
-import logger from "@/utils/logger";
+} from "#/core/models/Announcement.js";
+import logger from "#/utils/logger.js";
 
 /**
  * お知らせ配信に関するビジネスロジック

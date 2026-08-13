@@ -7,7 +7,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import { z as zod } from 'zod';
-import { MediaSize } from './mediaSize.zod';
+import { MediaSize } from './mediaSize.zod.js';
 
 export const MediaExtended = zod.object({
   "altText": zod.string().nullish(),

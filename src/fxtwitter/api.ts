@@ -1,9 +1,9 @@
-import { HttpResponseError, ResponseContentTypeError } from "@/infrastructure/http/orvalFetch";
-import logger from "@/utils/logger";
+import { HttpResponseError, ResponseContentTypeError } from "#/infrastructure/http/orvalFetch.js";
+import logger from "#/utils/logger.js";
 
-import { get2StatusId } from "./generated/default";
-import { SocialThread, type SocialThreadOutput } from "./generated/model";
-import { describeSocialThreadFailure } from "./statusValidationError";
+import { get2StatusId } from "./generated/default.js";
+import { SocialThread, type SocialThreadOutput } from "./generated/model/index.js";
+import { describeSocialThreadFailure } from "./statusValidationError.js";
 
 export class FxTwitterApi {
   /**

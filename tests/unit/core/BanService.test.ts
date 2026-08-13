@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { BanEntry, IBanRepository } from "@/core/models/BanEntry";
-import { BanService } from "@/core/services/BanService";
+import type { BanEntry, IBanRepository } from "#/core/models/BanEntry.js";
+import { BanService } from "#/core/services/BanService.js";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

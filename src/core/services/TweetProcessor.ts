@@ -1,4 +1,4 @@
-import type { Tweet } from "@/core/models/Tweet";
+import type { Tweet } from "#/core/models/Tweet.js";
 
 const ARTICLE_URL_REGEX = /https?:\/\/(?:www\.)?(?:x|twitter)\.com\/i\/article\/([0-9]+)/;
 

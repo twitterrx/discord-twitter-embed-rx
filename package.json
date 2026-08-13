@@ -3,6 +3,9 @@
   "version": "3.0.1",
   "description": "Twitter/Xの投稿URLをDiscord上で見やすいEmbedに展開するBot",
   "type": "module",
+  "imports": {
+    "#/*": "./dist/*"
+  },
   "main": "index.js",
   "private": true,
   "keywords": [
@@ -34,10 +37,11 @@
     "start:docker": "node ./dist/index.js",
     "debug": "tsc --noEmit && tsx watch --env-file=.env src/index.ts",
     "clean": "rm -rf dist",
-    "compile": "npm run clean && tsc -p . && tsc-alias --resolve-full-paths",
+    "compile": "npm run clean && tsc -p .",
     "compile:test": "tsc -p . --noEmit",
     "compile:tests": "tsc -p tsconfig.test.json --noEmit",
     "build": "npm run build:shared && npm run compile",
+    "verify:dist": "node scripts/check-dist-resolution.mjs",
     "build:shared": "npm run build --workspace=@rx-twitter/shared",
     "test": "vitest",
     "test:unit": "vitest run tests/unit",
@@ -47,7 +51,7 @@
     "test:coverage": "vitest run --coverage",
     "lint": "oxlint src/ tests/",
     "format": "oxfmt src/",
-    "gen:api": "orval --config ./orval.config.ts"
+    "gen:api": "orval --config ./orval.config.ts && node scripts/fix-generated-imports.mjs"
   },
   "dependencies": {
     "@discordjs/builders": "^1.9.0",
@@ -69,11 +73,10 @@
     "@vitest/ui": "4.1.9",
     "husky": "9.1.7",
     "lint-staged": "17.0.8",
+    "orval": "8.22.0",
     "oxfmt": "0.56.0",
     "oxlint": "1.71.0",
-    "orval": "8.22.0",
     "ts-node": "10.9.2",
-    "tsc-alias": "1.8.16",
     "tsx": "4.22.4",
     "typescript": "6.0.3",
     "vitest": "4.1.9"

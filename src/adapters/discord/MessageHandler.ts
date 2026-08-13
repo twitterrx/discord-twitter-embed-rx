@@ -16,19 +16,19 @@ import {
   MessageFlags,
 } from "discord.js";
 
-import { ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
-import { Tweet } from "@/core/models/Tweet";
-import { ArticlePostService } from "@/core/services/ArticlePostService";
-import { BanService } from "@/core/services/BanService";
-import { ChannelConfigService } from "@/core/services/ChannelConfigService";
-import { MediaHandler } from "@/core/services/MediaHandler";
-import { TweetProcessor } from "@/core/services/TweetProcessor";
-import { IReplyLogger } from "@/db/replyLogger";
-import logger from "@/utils/logger";
+import { ITwitterAdapter } from "#/adapters/twitter/BaseTwitterAdapter.js";
+import { Tweet } from "#/core/models/Tweet.js";
+import { ArticlePostService } from "#/core/services/ArticlePostService.js";
+import { BanService } from "#/core/services/BanService.js";
+import { ChannelConfigService } from "#/core/services/ChannelConfigService.js";
+import { MediaHandler } from "#/core/services/MediaHandler.js";
+import { TweetProcessor } from "#/core/services/TweetProcessor.js";
+import { IReplyLogger } from "#/db/replyLogger.js";
+import logger from "#/utils/logger.js";
 
-import { resolveAttachmentLimit } from "./attachmentLimit";
-import { ComponentsV2Builder } from "./ComponentsV2Builder";
-import { DiscordEmbedBuilder } from "./EmbedBuilder";
+import { resolveAttachmentLimit } from "./attachmentLimit.js";
+import { ComponentsV2Builder } from "./ComponentsV2Builder.js";
+import { DiscordEmbedBuilder } from "./EmbedBuilder.js";
 
 /**
  * スポイラー展開ボタンの待ち受け時間
@@ -658,7 +658,7 @@ export class MessageHandler {
     if (!guild) return;
 
     try {
-      const redis = (await import("@/db/init")).redis;
+      const redis = (await import("#/db/init.js")).redis;
 
       // refresh リクエストキーの確認
       const shouldRefresh = await redis.get(`app:guild:${guild.id}:channels:refresh`);

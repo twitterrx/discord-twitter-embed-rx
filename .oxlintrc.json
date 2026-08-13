@@ -4,7 +4,7 @@
     "node": true,
     "es2024": true
   },
-  "ignorePatterns": ["dist/**", "coverage/**", "node_modules/**", "*.config.*", "*.mjs", "dashboard/**", "packages/**", "src/**/generated/**"],
+  "ignorePatterns": ["dist/**", "coverage/**", "node_modules/**", "*.config.*", "*.mjs", "packages/**", "src/**/generated/**"],
   "plugins": ["typescript"],
   "rules": {
     "no-unused-vars": "warn",

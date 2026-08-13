@@ -6,13 +6,13 @@
  * OpenAPI spec version: 2.0.0
  */
 import { z as zod } from 'zod';
-import { APIBlueskyStatus } from './aPIBlueskyStatus.zod';
-import { APIInstagramStatus } from './aPIInstagramStatus.zod';
-import { APIMastodonStatus } from './aPIMastodonStatus.zod';
-import { APIStatusTombstone } from './aPIStatusTombstone.zod';
-import { APIThreadsStatus } from './aPIThreadsStatus.zod';
-import { APITwitterStatus } from './aPITwitterStatus.zod';
-import { APIUser } from './aPIUser.zod';
+import { APIBlueskyStatus } from './aPIBlueskyStatus.zod.js';
+import { APIInstagramStatus } from './aPIInstagramStatus.zod.js';
+import { APIMastodonStatus } from './aPIMastodonStatus.zod.js';
+import { APIStatusTombstone } from './aPIStatusTombstone.zod.js';
+import { APIThreadsStatus } from './aPIThreadsStatus.zod.js';
+import { APITwitterStatus } from './aPITwitterStatus.zod.js';
+import { APIUser } from './aPIUser.zod.js';
 
 export const SocialThread = zod.object({
   "code": zod.number().optional().describe('HTTP-style status; mirrors response status code'),

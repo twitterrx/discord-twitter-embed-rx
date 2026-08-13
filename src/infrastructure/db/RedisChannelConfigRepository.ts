@@ -1,7 +1,7 @@
 import type { ConfigResult, GuildConfig, IChannelConfigRepository } from "@rx-twitter/shared";
 
-import { redis } from "@/db/init";
-import logger from "@/utils/logger";
+import { redis } from "#/db/init.js";
+import logger from "#/utils/logger.js";
 
 /**
  * LRUキャッシュエントリ

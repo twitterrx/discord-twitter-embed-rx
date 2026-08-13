@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { BanEntry } from "@/core/models/BanEntry";
+import type { BanEntry } from "#/core/models/BanEntry.js";
 
-vi.mock("@/db/init", () => ({
+vi.mock("#/db/init.js", () => ({
   redis: {
     sAdd: vi.fn(),
     sRem: vi.fn(),
@@ -14,12 +14,12 @@ vi.mock("@/db/init", () => ({
   },
 }));
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { redis } from "@/db/init";
-import { RedisBanRepository } from "@/infrastructure/db/RedisBanRepository";
+import { redis } from "#/db/init.js";
+import { RedisBanRepository } from "#/infrastructure/db/RedisBanRepository.js";
 
 const makeUserEntry = (overrides: Partial<BanEntry> = {}): BanEntry => ({
   targetId: "user-1",

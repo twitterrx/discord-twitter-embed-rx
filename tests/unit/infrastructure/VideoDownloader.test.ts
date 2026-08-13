@@ -1,7 +1,7 @@
 import { EventEmitter } from "node:events";
 import type { IncomingMessage, ClientRequest } from "node:http";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { mediaUrl } from "../../fixtures/testMediaUrl";
+import { mediaUrl } from "../../fixtures/testMediaUrl.js";
 
 vi.mock("node:fs", () => ({
   createWriteStream: vi.fn(),
@@ -13,9 +13,9 @@ vi.mock("node:http", () => ({ get: vi.fn() }));
 import { createWriteStream, type WriteStream } from "node:fs";
 import * as httpsModule from "node:https";
 import * as httpModule from "node:http";
-import { VideoDownloader } from "@/infrastructure/http/VideoDownloader";
+import { VideoDownloader } from "#/infrastructure/http/VideoDownloader.js";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

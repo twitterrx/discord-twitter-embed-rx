@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { FxTwitterAdapter } from "@/adapters/twitter/FxTwitterAdapter";
-import { SocialThread } from "@/fxtwitter/generated/model";
+import { FxTwitterAdapter } from "#/adapters/twitter/FxTwitterAdapter.js";
+import { SocialThread } from "#/fxtwitter/generated/model/index.js";
 
-import { TEST_URLS } from "../fixtures/test-urls";
+import { TEST_URLS } from "../fixtures/test-urls.js";
 
 /**
  * FxTwitter の実 API とスキーマの契約テスト。
@@ -15,8 +15,7 @@ import { TEST_URLS } from "../fixtures/test-urls";
  * ネットワーク依存で不安定になるため既定では skip し、RUN_LIVE_API_TESTS=1 でオプトインする。
  *   RUN_LIVE_API_TESTS=1 npx vitest run tests/integration/fxtwitterContract.test.ts
  */
-const isEnabled = process.env.RUN_LIVE_API_TESTS === "1";
-const describeLive = isEnabled ? describe : describe.skip;
+const RUN = process.env.RUN_LIVE_API_TESTS === "1";
 
 const TIMEOUT = process.env.CI === "true" ? 30000 : 15000;
 
@@ -34,7 +33,7 @@ const fetchStatus = async (url: string): Promise<unknown> => {
   return response.json();
 };
 
-describeLive("FxTwitter 実 API との契約", () => {
+describe.skipIf(!RUN)("FxTwitter 実 API との契約", () => {
   /**
    * 形の違うツイートを並べる。ここに載っていない形は検証できないため、
    * 上流ドリフトで壊れた形が見つかったら fixture と合わせてここにも追加する。

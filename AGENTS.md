@@ -49,8 +49,8 @@ src/
 └── index.ts            # エントリポイント（DI コンテナ兼用）
 tests/
 ├── unit/               # 単体テスト（モック使用）
-├── integration/        # 結合テスト
-├── e2e/                # E2E テスト
+├── integration/        # 結合テスト（実 Redis / 実 API を使うものは明示フラグでオプトイン）
+├── e2e/                # Bot の主要フローを通すテスト（Discord と fetch のみ差し替え）
 └── fixtures/           # テストフィクスチャ
 packages/
 └── shared/             # Bot・Dashboard 共通パッケージ @twitterrx/shared
@@ -89,7 +89,7 @@ const adapter = TwitterAdapter.createDefault(); // ← 内部で Vx/Fx を compo
 | ゲート      | コマンド                              | 内容                                                                                          |
 | ----------- | ------------------------------------- | --------------------------------------------------------------------------------------------- |
 | **Lint**    | `npm run lint` (oxlint)               | `src/` および `tests/` 以下の全 TypeScript を oxlint でチェック。警告・エラーともにゼロ必須。 |
-| **Compile** | `npm run compile:test` (tsc --noEmit) | TypeScript コンパイルエラーゼロ。パスエイリアス `@/` の解決も含む。                           |
+| **Compile** | `npm run compile:test` (tsc --noEmit) | TypeScript コンパイルエラーゼロ。パスエイリアス `#/` の解決も含む。                           |
 | **Build**   | `npm run build`                       | 本番ビルドが正常に完了すること（clean → shared ビルド → tsc → tsc-alias）。                   |
 
 実装・変更を行ったら、作業完了前に必ず `npm run lint` (`oxlint src/ tests/`) と `npm run compile:test` (`tsc --noEmit`) を実行し、通過を確認する。
@@ -155,7 +155,16 @@ scope は省略可能。description は日本語でも英語でもよいが、�
 - 命名: `camelCase`（変数/関数）、`PascalCase`（クラス/型/インターフェース）、`UPPER_CASE`（enum 値/定数）。
 - 型定義は `interface` 優先。`type` は Union 型など interface で表現できない場合のみ。
 - ファイル名: `PascalCase.ts`（クラス/コンポーネント）、`camelCase.ts`（関数/ユーティリティ）。
-- パスエイリアス: `@/` → `./src/`（tsconfig paths + vitest alias で解決）。
+- モジュール解決: `NodeNext`。相対 import には **`.js` を明示**する（指す先は `.ts` だが、ESM の仕様どおり出力後のファイル名で書く）。ディレクトリ import は使えないため `./foo/index.js` と書く。
+- パスエイリアス: `#/` → `./src/`。Node の subpath imports（`package.json` の `imports`）で実行時に解決するため、ビルド後処理は不要。宣言は 2 箇所に分かれている点に注意。
+
+  | 宣言 | 対象 | 用途 |
+  | --- | --- | --- |
+  | `tsconfig.json` の `paths` | `#/*` → `./src/*` | コンパイル時（tsc） |
+  | `package.json` の `imports` | `#/*` → `./dist/*` | 実行時（Node） |
+  | `vitest.config.ts` の `alias` | `#` → `./src` | テスト時（Vite） |
+
+  片方だけ書き換えると型検査は通って実行時に落ちる。`npm run verify:dist` がビルド成果物側で検査する。
 
 ### 非同期処理
 
@@ -171,11 +180,36 @@ scope は省略可能。description は日本語でも英語でもよいが、�
 - テストランナー: Vitest（globals: true, sourceMap 対応）。
 - カバレッジ: vitest --coverage（v8 provider）。
 - 外部 API レスポンスの fixture: `tests/fixtures/fxtwitter/` に実 API の payload をそのまま置く。手書きモックだけではスキーマの思い込みをテストしてしまう。
-- 上流 API のドリフト検知: 保存済み fixture は自スキーマの回帰しか守れないため、実 API を叩く契約テストを `tests/integration/fxtwitterContract.test.ts` に置く。ネットワーク依存で不安定なので既定は skip、`RUN_LIVE_API_TESTS=1` でオプトインする。
+- 上流 API のドリフト検知: 保存済み fixture は自スキーマの回帰しか守れないため、実 API を叩くテストを `tests/integration/` に置く（`fxtwitterContract.test.ts` はスキーマの契約、`twitter-api.test.ts` は取得とフォールバックの振る舞い）。ネットワーク依存で不安定なので既定は skip、`RUN_LIVE_API_TESTS=1` でオプトインする。CI では実行しない（外部都合で PR が落ちないようにするため）。
 
   ```bash
   RUN_LIVE_API_TESTS=1 npx vitest run tests/integration/fxtwitterContract.test.ts
   ```
+
+- 実 Redis を要するテスト: `describe.skipIf(!RUN)` で `RUN_REDIS_INTEGRATION=1` のときだけ実行する。CI では `integration-redis` ジョブが Redis サービス付きで `tests/integration` をディレクトリ指定で実行する（`RUN_LIVE_API_TESTS` は立てないので実 API のテストは skipped のまま残る）。
+
+  ```bash
+  docker run -d --rm --name twrx-test-redis -p 6390:6379 redis:8.2.2-alpine
+  RUN_REDIS_INTEGRATION=1 REDIS_URL=redis://127.0.0.1:6390 \
+    npx vitest run tests/integration/channel-config.test.ts
+  docker rm -f twrx-test-redis
+  ```
+
+  被験体（Repository 等）と同じ Redis 接続（`#/db/init` の `redis`）でテストデータを書くこと。別クライアントを立てて書き込むと「書いたのに読めない」状態を作り込み、結合を検証できない。
+
+- **未実行を成功扱いにしない**: 依存が無いときに `if (!available) return;` で早期 return すると、テストが緑のまま何も検証しない。依存の有無は `skipIf` で表明し、実行されなかったことがレポートに `skipped` として残るようにする。
+
+- `tests/integration/` と `tests/e2e/` に置くテストは**必ずいずれかのフラグでゲートする**。ゲートの無いテストを置くと、通常の `test` ジョブ（`npm run test:coverage`）が外部依存を巻き込んで不安定になる。外部依存の要らないテストは `tests/unit/` に置く。
+
+- E2E（`tests/e2e/`）は Bot の主要フロー（メッセージ受信 → URL 判定 → 取得 → 表示の組み立て → 送信）を通す。差し替えるのは **Discord と `fetch` の 2 箇所だけ**で、Core / Adapter は本物を動かす。外部 API を `ITwitterAdapter` ごと差し替えると単体テストと守備範囲が重なるため、`fetch` 層で差し替える。詳細は `tests/e2e/README.md` と ADR 0007。
+
+  ```bash
+  RUN_REDIS_INTEGRATION=1 REDIS_URL=redis://127.0.0.1:6390 npm run test:e2e
+  ```
+
+- **テストが噛んでいるか確かめてからコミットする**: 新しく書いたテストは、本番コードを一時的に壊して狙ったテストが落ちることを確認する。通ったことより、壊したときに落ちることのほうが情報量が多い。
+
+- **外部の実リソースを指すアサーションは、消えても気づけない**: 実在する URL のサイズや内容に依存するテストは、対象が消えた後もエラーページの応答で緑を返しうる（#607 で実例があった）。実 API を叩くテストは「取得できること・スキーマに適合すること」に留め、特定リソースの中身の値には依存させない。
 
 ### Redis キー命名規則
 

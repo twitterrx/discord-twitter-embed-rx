@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ComponentType } from "discord.js";
 
-import { ComponentsV2Builder } from "@/adapters/discord/ComponentsV2Builder";
-import { createMockTweet } from "../../../fixtures/mock-tweets";
+import { ComponentsV2Builder } from "#/adapters/discord/ComponentsV2Builder.js";
+import { createMockTweet } from "../../../fixtures/mock-tweets.js";
 
 const builder = new ComponentsV2Builder();
 

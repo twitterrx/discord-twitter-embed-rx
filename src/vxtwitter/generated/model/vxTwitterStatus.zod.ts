@@ -7,10 +7,10 @@
  * OpenAPI spec version: 1.0.0
  */
 import { z as zod } from 'zod';
-import { Article } from './article.zod';
-import { MediaExtended } from './mediaExtended.zod';
-import { PollData } from './pollData.zod';
-import { Translation } from './translation.zod';
+import { Article } from './article.zod.js';
+import { MediaExtended } from './mediaExtended.zod.js';
+import { PollData } from './pollData.zod.js';
+import { Translation } from './translation.zod.js';
 
 export type VxTwitterStatus = {
   /** ツイート投稿日時 (RFC 2822形式) */

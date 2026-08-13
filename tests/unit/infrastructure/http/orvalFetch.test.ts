@@ -4,7 +4,7 @@ import {
   HttpResponseError,
   orvalFetch,
   ResponseContentTypeError,
-} from "@/infrastructure/http/orvalFetch";
+} from "#/infrastructure/http/orvalFetch.js";
 
 describe("orvalFetch", () => {
   afterEach(() => {

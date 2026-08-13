@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { FxTwitterApi } from "@/fxtwitter/api";
-import { SocialThread } from "@/fxtwitter/generated/model";
-import { HttpResponseError, ResponseContentTypeError } from "@/infrastructure/http/orvalFetch";
+import { FxTwitterApi } from "#/fxtwitter/api.js";
+import { SocialThread } from "#/fxtwitter/generated/model/index.js";
+import { HttpResponseError, ResponseContentTypeError } from "#/infrastructure/http/orvalFetch.js";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock("@/fxtwitter/generated/default", () => ({
+vi.mock("#/fxtwitter/generated/default.js", () => ({
   get2StatusId: vi.fn(),
 }));
 
-import { get2StatusId } from "@/fxtwitter/generated/default";
-import logger from "@/utils/logger";
+import { get2StatusId } from "#/fxtwitter/generated/default.js";
+import logger from "#/utils/logger.js";
 
 const mockGet2StatusId = vi.mocked(get2StatusId);
 

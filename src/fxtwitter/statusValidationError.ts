@@ -7,7 +7,7 @@ import {
   APIStatusTombstone,
   APIThreadsStatus,
   APITwitterStatus,
-} from "./generated/model";
+} from "./generated/model/index.js";
 
 type ZodIssues = ZodError["issues"];
 

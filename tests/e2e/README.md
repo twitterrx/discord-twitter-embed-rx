@@ -1,215 +1,84 @@
 # E2E テスト
 
-このディレクトリには、TwitterRX の E2E（エンドツーエンド）テストが含まれています。
+Bot の主要フローを通しで検証するテストを置く。
 
-## 📋 概要
-
-E2E テストは、システム全体の動作を確認するためのテストです。実際の Redis や Dashboard API に対してテストを実行します。
-
-## 🎯 テストの種類
-
-### 1. チャンネル設定テスト (`channel-config.test.ts`)
-
-Bot のチャンネル設定機能の E2E テストです：
-
-- 設定の取得
-- チャンネル許可判定
-- キャッシュ機能
-- ギルド参加・離脱
-- クリーンアップ
-
-### 2. Dashboard API テスト (`dashboard-api.test.ts`)
-
-Dashboard の API エンドポイントの E2E テストです：
-
-- 認証チェック
-- ギルド一覧取得
-- ギルド設定の取得・保存
-- 監査ログの取得
-
-## 🚀 実行方法
-
-### 前提条件
-
-E2E テストを実行する前に、以下が必要です：
-
-1. **Redis が起動していること（必須）**
-   ```bash
-   # Redis をDocker で起動
-   docker run -d -p 6379:6379 redis:7-alpine
-   
-   # または Docker Compose で起動
-   docker compose up -d redis
-   ```
-
-2. Dashboard が起動していること（Dashboard API テストの場合）
-
-### 実行前の確認
-
-Redis が起動しているか確認してください：
-```bash
-redis-cli ping
-# => PONG が返ればOK
+```
+メッセージ受信 → URL 判定 → 投稿情報の取得 → 表示の組み立て → 送信
 ```
 
-### Docker Compose 環境での実行
+## 何を本物にして、何を偽物にするか
 
-```bash
-# 1. サービスを起動
-docker compose up -d
+E2E の値打ちは、この線引きで決まる。
 
-# 2. E2E テストを実行
-npm run test:e2e
+| | 対象 |
+| --- | --- |
+| **本物** | `TweetProcessor`、`TwitterAdapter`（Vx→Fx のフォールバック含む）、`ComponentsV2Builder`、`DiscordEmbedBuilder`、`ChannelConfigService`、`MediaHandler`、Redis |
+| **偽物** | Discord（`Message` / `Client`）、`fetch`（外部 Twitter API） |
 
-# 3. 特定のテストファイルのみ実行
-npm run test:e2e -- tests/e2e/channel-config.test.ts
-```
+差し替えるのは**外周の 2 箇所だけ**。内側は本番と同じ実装が動く。
 
-### ローカル環境での実行
+`tests/unit/adapters/discord/MessageHandler.test.ts` は協力者を全て `vi.fn()` に
+差し替えるため、`MessageHandler` の手順は検証できても、URL 抽出が返した文字列を
+Adapter が解釈でき、その `Tweet` から表示が組めるかという**協調**は見ていない。
+E2E が埋めるのはそこ。
 
-```bash
-# 1. Redis を起動（Docker を使用）
-docker run -d -p 6379:6379 redis:7-alpine
+### 外部 API は `fetch` 層で差し替える
 
-# 2. 環境変数を設定
-export REDIS_URL=redis://localhost:6379
+`ITwitterAdapter` ごと差し替えると、生成クライアントのパースも `Tweet` への変換も
+フォールバックの分岐も通らず、単体テストと守備範囲がほとんど重ならない。
 
-# 3. E2E テストを実行
-npm run test:e2e
-```
-
-## 🔧 環境変数
-
-| 変数名 | 説明 | デフォルト |
-|--------|------|-----------|
-| `REDIS_URL` | Redis 接続 URL | `redis://localhost:6379` |
-| `DASHBOARD_URL` | Dashboard のベース URL | `http://localhost:4321` |
-| `CONFIG_NOT_FOUND_FALLBACK` | 設定未作成時の挙動 | `allow` |
-| `REDIS_DOWN_FALLBACK` | Redis 障害時の挙動 | `allow` |
-
-## 📝 テストの書き方
-
-### 基本的なテスト構造
+`twitterApiStub.ts` はホスト名でルーティングする。`transformUrl` が `x.com` を
+`api.vxtwitter.com` / `api.fxtwitter.com` へ書き換えるため、**vx を 5xx にして fx へ
+落とす経路も意図的に作れる**。
 
 ```typescript
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
-import { getTestRedis, closeTestRedis, setupTestGuildConfig, generateTestGuildId } from "./helpers";
-
-describe("E2E: 新しい機能", () => {
-  let testGuildId: string;
-
-  beforeAll(async () => {
-    await getTestRedis();
-  });
-
-  afterAll(async () => {
-    await closeTestRedis();
-  });
-
-  beforeEach(() => {
-    testGuildId = generateTestGuildId();
-  });
-
-  it("テストケース", async () => {
-    // テストの実装
-  });
+stubTwitterApi({
+  vx: { kind: "status", status: 500 },
+  fx: { kind: "fixture", name: "status-text-only" }, // 実 API の保存済み payload
 });
 ```
 
-### ヘルパー関数の使用
+想定外のホストへの `fetch` は reject する。黙って通すと、テストが気付かないうちに
+実ネットワークへ出てしまう。
 
-```typescript
-import {
-  getTestRedis,
-  closeTestRedis,
-  cleanupTestData,
-  setupTestGuildConfig,
-  generateTestGuildId,
-  getRedisValue,
-} from "./helpers";
+## 実行方法
 
-// テスト用のギルド設定をセットアップ
-await setupTestGuildConfig(testGuildId, {
-  allowAllChannels: false,
-  whitelist: ["channel-1", "channel-2"],
-  version: 1,
-});
-
-// Redis の値を直接確認
-const value = await getRedisValue(`app:guild:${testGuildId}:config`);
-
-// テストデータのクリーンアップ
-await cleanupTestData(testGuildId);
-```
-
-## ⚠️ 注意事項
-
-1. **テスト用のギルド ID を使用**  
-   本番データと混在しないよう、`generateTestGuildId()` を使用してランダムな ID を生成します。
-
-2. **テストデータのクリーンアップ**  
-   各テストの後にデータをクリーンアップして、他のテストに影響を与えないようにします。
-
-3. **Redis の状態確認**  
-   テスト前に Redis が起動しているか確認してください：
-   ```bash
-   redis-cli ping
-   # => PONG
-   ```
-
-4. **認証付きテスト**  
-   Dashboard API の認証付きテストは、モック OAuth サーバーやテスト用トークンのセットアップが必要です。
-
-## 🎨 カバレッジ
-
-E2E テストのカバレッジを確認する場合：
+実 Redis が要るため `RUN_REDIS_INTEGRATION=1` のときだけ実行する。
 
 ```bash
-npm run test:coverage -- tests/e2e
+docker run -d --rm --name twrx-test-redis -p 6390:6379 redis:8.2.2-alpine
+RUN_REDIS_INTEGRATION=1 REDIS_URL=redis://127.0.0.1:6390 npm run test:e2e
+docker rm -f twrx-test-redis
 ```
 
-## 🐛 トラブルシューティング
+フラグ無しでは `skipped` として残る。空振りの緑にはしない（ADR 0006）。
 
-### Redis 接続エラー
+CI では `integration-redis` ジョブが Redis サービス付きで `tests/integration` と
+併せて実行する。
 
-```
-Error: connect ECONNREFUSED 127.0.0.1:6379
-```
+## 書くときの約束
 
-**解決策**：Redis が起動していることを確認します。
+- **依存の有無は `describe.skipIf(!RUN)` で表明する**。早期 `return` で緑にしない。
+- **被験体と同じ Redis 接続（`#/db/init` の `redis`）でデータを用意する**。別クライアントで
+  書くと「書いたのに読めない」状態を作り込む。
+- **書いたテストが本当に噛んでいるか確かめる**。本番コードを一時的に壊して、狙った
+  テストが落ちることを確認してからコミットする。通ったことより、壊したときに落ちる
+  ことのほうが情報量が多い。
+- **外部の実リソースの中身の値に依存しない**。対象が消えてもエラー応答で緑を返しうる。
 
-```bash
-docker ps | grep redis
-```
+## 既知の限界
 
-### タイムアウトエラー
+`src/index.ts` は読み込み時点で Discord へログインするため、テストから `import` できない。
+依存グラフは**テスト側で index.ts と同じ順に組み直している**。したがって
+**index.ts 側の配線ミスはこのテストでは捕まらない**。
 
-```
-Test timed out in 10000ms.
-```
+配線を関数へ切り出して本番とテストで共有すれば解消するが、本番コードのリファクタを
+伴うため見送っている。経緯は ADR 0007 を参照。
 
-**解決策**：`vitest.config.ts` でタイムアウト時間を延長します。
+## ファイル
 
-```typescript
-test: {
-  testTimeout: 30000, // 30秒
-}
-```
-
-### Dashboard 接続エラー
-
-```
-fetch failed
-```
-
-**解決策**：Dashboard が起動していることと、正しい URL が設定されていることを確認します。
-
-```bash
-curl http://localhost:4321/api/health
-```
-
-## 📚 参考資料
-
-- [Vitest 公式ドキュメント](https://vitest.dev/)
-- [Redis コマンドリファレンス](https://redis.io/commands/)
-- [仕様書: DASHBOARD_SPEC.md](../../docs/DASHBOARD_SPEC.md)
+| ファイル | 役割 |
+| --- | --- |
+| `messageFlow.test.ts` | メッセージ受信から送信までのシナリオ |
+| `twitterApiStub.ts` | 外部 Twitter API を `fetch` 層で差し替える |
+| `discordFake.ts` | `Message` / `Client` のフェイク。送信内容を記録する |

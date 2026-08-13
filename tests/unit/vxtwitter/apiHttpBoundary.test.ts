@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { VxTwitterApi, VxTwitterServerError } from "@/vxtwitter/api";
+import { VxTwitterApi, VxTwitterServerError } from "#/vxtwitter/api.js";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

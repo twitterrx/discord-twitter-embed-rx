@@ -1,7 +1,7 @@
 import type { AnnounceTarget, ConfigResult, EmbedVersion, IChannelConfigRepository } from "@rx-twitter/shared";
 import { DEFAULT_EMBED_VERSION, DEFAULT_MAX_URLS_PER_MESSAGE, MAX_URLS_PER_MESSAGE_LIMIT } from "@rx-twitter/shared";
 
-import logger from "@/utils/logger";
+import logger from "#/utils/logger.js";
 
 /** お知らせ配信先のデフォルト（未設定時はオーナーへの DM） */
 const DEFAULT_ANNOUNCE_TARGET: AnnounceTarget = { mode: "dm" };

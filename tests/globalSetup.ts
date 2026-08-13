@@ -1,4 +1,4 @@
-import { TestMediaServer } from "./fixtures/mediaServer";
+import { TestMediaServer } from "./fixtures/mediaServer.js";
 
 let server: TestMediaServer | undefined;
 

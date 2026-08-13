@@ -159,8 +159,13 @@ jobs:
       - name: Build shared package
         run: npm run build:shared
 
-      - name: Run announcement Streams integration tests
-        run: npx vitest run tests/integration/announcement-stream.test.ts
+      # tests/integration と tests/e2e のテストは全て明示フラグでゲートされて
+      # いるため、ディレクトリ指定でよい。RUN_REDIS_INTEGRATION だけを立てるので、
+      # 実 API を叩くテスト（RUN_LIVE_API_TESTS）は skipped のまま残る。
+      # ファイル名を列挙しないことで、テスト追加時に CI への追記を忘れても
+      # 実行対象から漏れない。
+      - name: Run Redis integration and E2E tests
+        run: npx vitest run tests/integration tests/e2e
         env:
           RUN_REDIS_INTEGRATION: "1"
           REDIS_URL: redis://localhost:6379
@@ -201,3 +206,9 @@ jobs:
             exit 1
           fi
           echo "Build successful"
+
+      # エイリアスの宣言は tsconfig の paths（コンパイル時）と package.json の
+      # imports（実行時）に分かれている。片方だけ書き換えても型検査は通り、
+      # 本番起動で初めて ERR_MODULE_NOT_FOUND になる。成果物側で解決を検証する。
+      - name: Verify module resolution in build output
+        run: npm run verify:dist

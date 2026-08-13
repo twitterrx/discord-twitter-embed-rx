@@ -9,9 +9,9 @@ import {
   validateAnnouncement,
 } from "@rx-twitter/shared";
 
-import type { IAnnouncementRepository } from "@/core/models/Announcement";
-import { redis } from "@/db/init";
-import logger from "@/utils/logger";
+import type { IAnnouncementRepository } from "#/core/models/Announcement.js";
+import { redis } from "#/db/init.js";
+import logger from "#/utils/logger.js";
 
 /** お知らせ受信時に呼ばれるハンドラ。throw した場合は再配信対象となる */
 export type AnnouncementHandler = (announcement: Announcement) => Promise<void>;

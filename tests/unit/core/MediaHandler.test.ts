@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { TweetMedia } from "@/core/models/Tweet";
-import { MediaHandler, IFileSizeChecker } from "@/core/services/MediaHandler";
-import { mediaUrl } from "../../fixtures/testMediaUrl";
+import { TweetMedia } from "#/core/models/Tweet.js";
+import { MediaHandler, IFileSizeChecker } from "#/core/services/MediaHandler.js";
+import { mediaUrl } from "../../fixtures/testMediaUrl.js";
 
 describe("MediaHandler", () => {
   let mockFileSizeChecker: IFileSizeChecker;

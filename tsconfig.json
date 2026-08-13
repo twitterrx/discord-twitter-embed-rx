@@ -1,11 +1,26 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ES2022",
+    "module": "NodeNext",
     "lib": ["ES2022"],
-    "moduleResolution": "bundler",
+    // Node ESM のセマンティクスに揃える（#614）。型検査と実行時で解決規則が一致する。
+    //
+    // エイリアスは package.json の imports フィールドで宣言し、Node がランタイムで
+    // 解決する。tsc は指定子を書き換えないため、後処理（tsc-alias）は不要。
+    //
+    //   tsconfig.json  paths   "#/*" → "./src/*"    コンパイル時（tsc が見る）
+    //   package.json   imports "#/*" → "./dist/*"   実行時（Node が見る）
+    //
+    // 宣言が 2 つに分かれているため、片方だけ書き換えると型検査は通って実行時に
+    // 落ちる。そこは npm run verify:dist（scripts/check-dist-resolution.mjs）で
+    // 検査している。
+    //
+    // 相対 import には .js を明示する（指す先は .ts だが、ESM の仕様どおり
+    // 出力後のファイル名で書く）。ディレクトリ import は使えないため
+    // ./foo/index.js のように書く。
+    "moduleResolution": "NodeNext",
     "paths": {
-      "@/*": ["./src/*"]
+      "#/*": ["./src/*"]
     },
     "rootDir": "./src",
     "outDir": "./dist",
@@ -16,10 +31,9 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
-    "declaration": true
+    "allowSyntheticDefaultImports": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "tests", "dashboard", "packages"],
+  "exclude": ["node_modules", "dist", "tests", "packages"],
   "compileOnSave": false
 }

@@ -1,22 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChannelType, MessageFlags } from "discord.js";
 
-import type { ITwitterAdapter } from "@/adapters/twitter/BaseTwitterAdapter";
+import type { ITwitterAdapter } from "#/adapters/twitter/BaseTwitterAdapter.js";
 import type {
   IFileManager,
   IVideoDownloader,
-} from "@/adapters/discord/MessageHandler";
-import { MessageHandler } from "@/adapters/discord/MessageHandler";
-import { ComponentsV2Builder } from "@/adapters/discord/ComponentsV2Builder";
-import type { IReplyLogger } from "@/db/replyLogger";
-import type { ChannelConfigService } from "@/core/services/ChannelConfigService";
-import type { ArticlePostService } from "@/core/services/ArticlePostService";
-import type { MediaHandler } from "@/core/services/MediaHandler";
-import type { TweetProcessor } from "@/core/services/TweetProcessor";
-import type { DiscordEmbedBuilder } from "@/adapters/discord/EmbedBuilder";
-import { createMockTweet } from "../../../fixtures/mock-tweets";
+} from "#/adapters/discord/MessageHandler.js";
+import { MessageHandler } from "#/adapters/discord/MessageHandler.js";
+import { ComponentsV2Builder } from "#/adapters/discord/ComponentsV2Builder.js";
+import type { IReplyLogger } from "#/db/replyLogger.js";
+import type { ChannelConfigService } from "#/core/services/ChannelConfigService.js";
+import type { ArticlePostService } from "#/core/services/ArticlePostService.js";
+import type { MediaHandler } from "#/core/services/MediaHandler.js";
+import type { TweetProcessor } from "#/core/services/TweetProcessor.js";
+import type { DiscordEmbedBuilder } from "#/adapters/discord/EmbedBuilder.js";
+import { createMockTweet } from "../../../fixtures/mock-tweets.js";
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 

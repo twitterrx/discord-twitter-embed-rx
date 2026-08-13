@@ -4,7 +4,7 @@ import chalk from "chalk";
 import winston from "winston";
 import DailyRotateFile from "winston-daily-rotate-file";
 
-import config, { ROOT_DIR } from "@/config/config";
+import config, { ROOT_DIR } from "#/config/config.js";
 
 // コンソール用カラーフォーマット
 const consoleColorFormat = winston.format.printf(({ timestamp, level, message, ...meta }) => {

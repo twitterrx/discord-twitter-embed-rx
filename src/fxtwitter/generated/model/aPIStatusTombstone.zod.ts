@@ -6,7 +6,7 @@
  * OpenAPI spec version: 2.0.0
  */
 import { z as zod } from 'zod';
-import { APIAboutAccount } from './aPIAboutAccount.zod';
+import { APIAboutAccount } from './aPIAboutAccount.zod.js';
 
 export const aPIStatusTombstoneAuthorRawDescriptionFacetsItemIndicesMin = 2;
 export const aPIStatusTombstoneAuthorRawDescriptionFacetsItemIndicesMax = 2;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mediaUrl } from "../../../fixtures/testMediaUrl";
+import { mediaUrl } from "../../../fixtures/testMediaUrl.js";
 import {
   createMockTweet,
   MOCK_TWEET_WITH_QUOTE,
@@ -10,8 +10,8 @@ import {
   MOCK_TWEET_WITH_LONG_TEXT,
   MOCK_TWEET_WITH_DOUBLE_AT,
   MOCK_TWEET_WITH_FULLWIDTH_AT,
-} from "../../../fixtures/mock-tweets";
-import { DiscordEmbedBuilder } from "@/adapters/discord/EmbedBuilder";
+} from "../../../fixtures/mock-tweets.js";
+import { DiscordEmbedBuilder } from "#/adapters/discord/EmbedBuilder.js";
 
 describe("DiscordEmbedBuilder", () => {
   const builder = new DiscordEmbedBuilder();

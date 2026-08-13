@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { VxTwitterStatus } from "@/vxtwitter/generated/model";
+import { VxTwitterStatus } from "#/vxtwitter/generated/model/index.js";
 
 const minimalStatus = {
   date: "Sun Jan 01 00:00:00 +0000 2024",

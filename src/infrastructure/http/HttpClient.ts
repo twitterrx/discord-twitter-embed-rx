@@ -1,7 +1,7 @@
 import https from "node:https";
 
-import { IFileSizeChecker } from "@/core/services/MediaHandler";
-import logger from "@/utils/logger";
+import { IFileSizeChecker } from "#/core/services/MediaHandler.js";
+import logger from "#/utils/logger.js";
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_SIZE = 10 * 1024 * 1024; // 10MB

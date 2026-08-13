@@ -8,23 +8,23 @@ import {
   type Announcement,
 } from "@rx-twitter/shared";
 
-vi.mock("@/db/init", () => ({
+vi.mock("#/db/init.js", () => ({
   redis: {
     duplicate: vi.fn(() => ({ on: vi.fn(), connect: vi.fn(), isOpen: true })),
   },
 }));
 
-vi.mock("@/utils/logger", () => ({
+vi.mock("#/utils/logger.js", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-import { redis } from "@/db/init";
-import type { IAnnouncementRepository } from "@/core/models/Announcement";
+import { redis } from "#/db/init.js";
+import type { IAnnouncementRepository } from "#/core/models/Announcement.js";
 import {
   AnnouncementStreamConsumer,
   type AnnouncementHandler,
   type DeadLetterNotifier,
-} from "@/infrastructure/stream/AnnouncementStreamConsumer";
+} from "#/infrastructure/stream/AnnouncementStreamConsumer.js";
 
 const validAnnouncement: Announcement = {
   id: "ann-1",

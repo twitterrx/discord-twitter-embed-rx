@@ -1,4 +1,4 @@
-import type { BanEntry, BanOperationResult, BanTargetType, IBanRepository } from "@/core/models/BanEntry";
+import type { BanEntry, BanOperationResult, BanTargetType, IBanRepository } from "#/core/models/BanEntry.js";
 
 /**
  * BAN に関するビジネスロジック

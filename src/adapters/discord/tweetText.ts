@@ -1,4 +1,4 @@
-import type { Tweet, TweetPollOption } from "@/core/models/Tweet";
+import type { Tweet, TweetPollOption } from "#/core/models/Tweet.js";
 
 /** 引用ツイートの接頭辞 */
 export const QUOTE_PREFIX = "QT: ";
