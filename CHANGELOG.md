@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.1.0](https://github.com/rx-twitter/rx-twitter/compare/v3.0.1...v3.1.0) (2026-08-13)
+
+
+### Features
+
+* **test:** Bot の主要フローを通す E2E テストを再導入する ([fc3fddd](https://github.com/rx-twitter/rx-twitter/commit/fc3fddd7ae1233ece026cea5cb1faa0ed4b984d2))
+
+
+### Bug Fixes
+
+* **ci:** verify:dist が imports の書き換えを検知できるようにする ([47a9d1b](https://github.com/rx-twitter/rx-twitter/commit/47a9d1b58bdf13489fae725d74a87142e252ce36))
+* **test:** カバレッジ計測から tests/ 配下を除外する ([1e260c7](https://github.com/rx-twitter/rx-twitter/commit/1e260c712537690ddca105b92f162a01bb3ed813))
+
 ## [3.0.1](https://github.com/rx-twitter/rx-twitter/compare/v3.0.0...v3.0.1) (2026-08-09)
 
 
