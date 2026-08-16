@@ -27,7 +27,7 @@
     "types"
   ],
   "author": "t1nyb0x",
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "devDependencies": {
     "typescript": "6.0.3"
   }

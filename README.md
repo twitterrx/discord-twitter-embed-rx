@@ -169,4 +169,13 @@ Core、Adapter、Infrastructure を分離したレイヤードアーキテクチ
 
 ## ライセンス
 
-[MIT](./LICENSE)
+[GNU Affero General Public License v3.0 or later](./LICENSE)（`AGPL-3.0-or-later`）
+
+Copyright (C) 2023 shika
+
+本 Bot を改変してネットワーク越しに提供する場合、AGPL 第 13 条により、その Bot を利用する
+ユーザーに対して改変後のソースコード（Corresponding Source）を提供する義務が生じます。
+セルフホストして手を入れる場合はご注意ください。改変せずに運用するぶんには追加の義務はありません。
+
+**v3.1.0 までのリリースは MIT License** で配布されています。MIT の通知保持条項に基づき、
+当時の著作権表示は [LICENSE.MIT](./LICENSE.MIT) に保持しています。
