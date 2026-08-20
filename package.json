@@ -23,7 +23,7 @@
   "bugs": {
     "url": "https://github.com/rx-twitter/rx-twitter/issues"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-or-later",
   "author": "t1nyb0x",
   "repository": {
     "type": "git",
